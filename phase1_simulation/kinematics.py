@@ -338,6 +338,218 @@ class Kinematics:
             trajectory.append([x, y, theta1, theta2])
         
         return np.array(trajectory)
+    
+    def compute_pick_trajectory(
+        self,
+        target_x: float,
+        target_y: float,
+        approach_height: float = 50.0,
+        elbow_up: bool = True,
+        num_points_per_phase: int = 15
+    ) -> Optional[np.ndarray]:
+        """
+        Calcule une trajectoire de saisie (pick) avec approche verticale.
+        
+        La trajectoire se compose de 3 phases:
+        1. Approche: déplacement vers la position au-dessus de l'objet
+        2. Descente: descente verticale vers l'objet
+        3. Remontée: remontée verticale après saisie
+        
+        Args:
+            target_x: Position X de l'objet en mm
+            target_y: Position Y de l'objet en mm
+            approach_height: Hauteur d'approche au-dessus de l'objet en mm
+            elbow_up: Configuration du coude
+            num_points_per_phase: Nombre de points par phase
+            
+        Returns:
+            np.ndarray: Trajectoire complète [x, y, theta1, theta2] ou None
+        """
+        # Position d'approche (au-dessus de l'objet)
+        approach_x = target_x
+        approach_y = target_y + approach_height
+        
+        # Vérifier que toutes les positions sont atteignables
+        if not self.is_position_reachable(approach_x, approach_y):
+            return None
+        if not self.is_position_reachable(target_x, target_y):
+            return None
+        
+        # Phase 1: Approche (position actuelle -> au-dessus de l'objet)
+        # Note: La position actuelle sera gérée par le contrôleur
+        # Ici on génère juste la descente et remontée
+        
+        # Phase 2: Descente verticale
+        descent = self.compute_trajectory(
+            (approach_x, approach_y),
+            (target_x, target_y),
+            num_points=num_points_per_phase,
+            elbow_up=elbow_up
+        )
+        
+        if descent is None:
+            return None
+        
+        # Phase 3: Remontée verticale (après saisie)
+        ascent = self.compute_trajectory(
+            (target_x, target_y),
+            (approach_x, approach_y),
+            num_points=num_points_per_phase,
+            elbow_up=elbow_up
+        )
+        
+        if ascent is None:
+            return None
+        
+        # Combiner descente et remontée
+        return np.vstack([descent, ascent[1:]])  # Éviter la duplication du point de saisie
+    
+    def compute_place_trajectory(
+        self,
+        target_x: float,
+        target_y: float,
+        drop_height: float = 30.0,
+        elbow_up: bool = True,
+        num_points_per_phase: int = 15
+    ) -> Optional[np.ndarray]:
+        """
+        Calcule une trajectoire de dépôt (place) avec approche verticale.
+        
+        La trajectoire se compose de 3 phases:
+        1. Approche: déplacement vers la position au-dessus de la zone
+        2. Descente: descente verticale vers la zone de dépôt
+        3. Remontée: remontée verticale après dépôt
+        
+        Args:
+            target_x: Position X de la zone de dépôt en mm
+            target_y: Position Y de la zone de dépôt en mm
+            drop_height: Hauteur au-dessus de la zone pour le dépôt en mm
+            elbow_up: Configuration du coude
+            num_points_per_phase: Nombre de points par phase
+            
+        Returns:
+            np.ndarray: Trajectoire complète [x, y, theta1, theta2] ou None
+        """
+        # Position d'approche (au-dessus de la zone)
+        approach_x = target_x
+        approach_y = target_y + drop_height
+        
+        # Position de dépôt (légèrement au-dessus de la zone)
+        drop_x = target_x
+        drop_y = target_y + self.config.drop_height
+        
+        # Vérifier que toutes les positions sont atteignables
+        if not self.is_position_reachable(approach_x, approach_y):
+            return None
+        if not self.is_position_reachable(drop_x, drop_y):
+            return None
+        
+        # Phase 1: Descente vers position de dépôt
+        descent = self.compute_trajectory(
+            (approach_x, approach_y),
+            (drop_x, drop_y),
+            num_points=num_points_per_phase,
+            elbow_up=elbow_up
+        )
+        
+        if descent is None:
+            return None
+        
+        # Phase 2: Remontée après dépôt
+        ascent = self.compute_trajectory(
+            (drop_x, drop_y),
+            (approach_x, approach_y),
+            num_points=num_points_per_phase,
+            elbow_up=elbow_up
+        )
+        
+        if ascent is None:
+            return None
+        
+        # Combiner descente et remontée
+        return np.vstack([descent, ascent[1:]])  # Éviter la duplication du point de dépôt
+    
+    def compute_pick_and_place_trajectory(
+        self,
+        pick_x: float,
+        pick_y: float,
+        place_x: float,
+        place_y: float,
+        approach_height: float = 50.0,
+        drop_height: float = 30.0,
+        elbow_up: bool = True,
+        num_points_transfer: int = 30
+    ) -> Optional[np.ndarray]:
+        """
+        Calcule une trajectoire complète pick & place.
+        
+        Séquence complète:
+        1. Descente vers l'objet
+        2. Remontée avec l'objet
+        3. Transfert vers la zone de dépôt
+        4. Descente vers la zone
+        5. Remontée après dépôt
+        
+        Args:
+            pick_x: Position X de l'objet à saisir
+            pick_y: Position Y de l'objet à saisir
+            place_x: Position X de la zone de dépôt
+            place_y: Position Y de la zone de dépôt
+            approach_height: Hauteur d'approche pour la saisie
+            drop_height: Hauteur d'approche pour le dépôt
+            elbow_up: Configuration du coude
+            num_points_transfer: Nombre de points pour le transfert
+            
+        Returns:
+            np.ndarray: Trajectoire complète ou None
+        """
+        # Trajectoire de saisie
+        pick_traj = self.compute_pick_trajectory(
+            pick_x, pick_y,
+            approach_height=approach_height,
+            elbow_up=elbow_up
+        )
+        
+        if pick_traj is None:
+            return None
+        
+        # Position après saisie (en haut)
+        pick_up_x = pick_x
+        pick_up_y = pick_y + approach_height
+        
+        # Position avant dépôt (en haut)
+        place_up_x = place_x
+        place_up_y = place_y + drop_height
+        
+        # Trajectoire de transfert (en hauteur)
+        transfer_traj = self.compute_trajectory(
+            (pick_up_x, pick_up_y),
+            (place_up_x, place_up_y),
+            num_points=num_points_transfer,
+            elbow_up=elbow_up
+        )
+        
+        if transfer_traj is None:
+            return None
+        
+        # Trajectoire de dépôt
+        place_traj = self.compute_place_trajectory(
+            place_x, place_y,
+            drop_height=drop_height,
+            elbow_up=elbow_up
+        )
+        
+        if place_traj is None:
+            return None
+        
+        # Combiner toutes les phases
+        # pick_traj se termine en haut, transfer commence en haut
+        # transfer se termine en haut, place commence en haut
+        return np.vstack([
+            pick_traj,
+            transfer_traj[1:],  # Éviter duplication
+            place_traj[1:]      # Éviter duplication
+        ])
 
 
 if __name__ == "__main__":

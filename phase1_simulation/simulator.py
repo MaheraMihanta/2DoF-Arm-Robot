@@ -10,9 +10,15 @@ from typing import List, Tuple, Optional
 try:
     from .config import RobotConfig, config
     from .kinematics import Kinematics
+    from .gripper import Gripper
+    from .objects import ObjectManager
+    from .pick_place_scenarios import ColorSortingScenario, ScenarioState
 except ImportError:
     from config import RobotConfig, config
     from kinematics import Kinematics
+    from gripper import Gripper
+    from objects import ObjectManager
+    from pick_place_scenarios import ColorSortingScenario, ScenarioState
 
 
 class RobotSimulator:
@@ -33,10 +39,16 @@ class RobotSimulator:
         self.screen = pygame.display.set_mode(
             (config.window_width, config.window_height)
         )
-        pygame.display.set_caption("Simulateur Bras Robotique 2DDL")
+        pygame.display.set_caption("Simulateur Bras Robotique 2DDL - Pick & Place")
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 24)
         self.small_font = pygame.font.Font(None, 18)
+        
+        # Composants pick & place
+        self.gripper = Gripper(config)
+        self.object_manager = ObjectManager(config)
+        self.scenario = ColorSortingScenario(config, self.kinematics,
+                                            self.gripper, self.object_manager)
         
         # État du robot
         self.theta1 = 0.0
@@ -79,6 +91,14 @@ class RobotSimulator:
         self.show_workspace = True
         self.show_grid = True
         self.show_info = True
+        self.show_objects = True
+        self.show_scenario_info = True
+        
+        # État du tri automatique
+        self.auto_sorting = False
+        self.current_trajectory = None
+        self.trajectory_index = 0
+        self.trajectory_phase = "idle"  # idle, picking, placing
         
     def world_to_screen(self, x: float, y: float) -> Tuple[int, int]:
         """
@@ -229,6 +249,129 @@ class RobotSimulator:
                            (target_screen[0], target_screen[1] + size), 3)
             pygame.draw.circle(self.screen, color, target_screen, 8, 2)
     
+    def draw_gripper(self):
+        """Dessine la pince à l'effecteur final"""
+        # Obtenir la position de l'effecteur
+        positions = self.kinematics.get_joint_positions(self.theta1, self.theta2)
+        end_x, end_y = positions['end_effector']
+        
+        # Calculer l'angle de l'effecteur (orientation du segment L2)
+        joint1_x, joint1_y = positions['joint1']
+        angle = np.arctan2(end_y - joint1_y, end_x - joint1_x)
+        
+        # Position de la pince (prolongement de l'effecteur)
+        gripper_x = end_x + self.config.gripper_length * np.cos(angle)
+        gripper_y = end_y + self.config.gripper_length * np.sin(angle)
+        
+        # Convertir en coordonnées écran
+        end_screen = self.world_to_screen(end_x, end_y)
+        gripper_screen = self.world_to_screen(gripper_x, gripper_y)
+        
+        # Dessiner le bras de la pince
+        pygame.draw.line(self.screen, (100, 100, 100),
+                        end_screen, gripper_screen, 4)
+        
+        # Calculer les positions des mâchoires
+        half_width = self.gripper.current_width / 2.0
+        perpendicular_angle = angle + np.pi / 2
+        
+        jaw1_x = gripper_x + half_width * np.cos(perpendicular_angle)
+        jaw1_y = gripper_y + half_width * np.sin(perpendicular_angle)
+        jaw2_x = gripper_x - half_width * np.cos(perpendicular_angle)
+        jaw2_y = gripper_y - half_width * np.sin(perpendicular_angle)
+        
+        jaw1_screen = self.world_to_screen(jaw1_x, jaw1_y)
+        jaw2_screen = self.world_to_screen(jaw2_x, jaw2_y)
+        
+        # Couleur selon l'état
+        if self.gripper.is_closed():
+            jaw_color = (200, 0, 0)  # Rouge fermé
+        elif self.gripper.is_open():
+            jaw_color = (0, 200, 0)  # Vert ouvert
+        else:
+            jaw_color = (255, 165, 0)  # Orange en mouvement
+        
+        # Dessiner les mâchoires
+        pygame.draw.line(self.screen, jaw_color,
+                        gripper_screen, jaw1_screen, 6)
+        pygame.draw.line(self.screen, jaw_color,
+                        gripper_screen, jaw2_screen, 6)
+        
+        # Dessiner l'articulation de la pince
+        pygame.draw.circle(self.screen, (50, 50, 50), gripper_screen, 8)
+        pygame.draw.circle(self.screen, self.BLACK, gripper_screen, 8, 2)
+        
+        # Mettre à jour la position de l'objet tenu
+        if self.gripper.held_object:
+            self.gripper.held_object.set_position(gripper_x, gripper_y)
+    
+    def draw_objects(self):
+        """Dessine les cubes et zones de dépôt"""
+        if not self.show_objects:
+            return
+        
+        # Dessiner les zones de dépôt
+        for zone in self.object_manager.drop_zones:
+            zone.draw(self.screen, self.origin_x, self.origin_y,
+                     self.config.get_scale_factor(), self.config.zone_colors)
+        
+        # Dessiner les cubes
+        for cube in self.object_manager.cubes:
+            cube.draw(self.screen, self.origin_x, self.origin_y,
+                     self.config.get_scale_factor(), self.config.cube_colors)
+    
+    def draw_scenario_info(self):
+        """Dessine les informations du scénario pick & place"""
+        if not self.show_scenario_info:
+            return
+        
+        # Panneau compact en bas à droite
+        panel_width = 200
+        panel_height = 120
+        info_rect = pygame.Rect(
+            self.config.window_width - panel_width - 10,
+            self.config.window_height - panel_height - 10,
+            panel_width,
+            panel_height
+        )
+        pygame.draw.rect(self.screen, self.LIGHT_GRAY, info_rect)
+        pygame.draw.rect(self.screen, self.BLACK, info_rect, 2)
+        
+        y_offset = info_rect.top + 10
+        line_height = 18
+        x_start = info_rect.left + 10
+        
+        # Titre compact
+        title = self.small_font.render("Pick & Place", True, self.BLACK)
+        self.screen.blit(title, (x_start, y_offset))
+        y_offset += line_height + 5
+        
+        # Statistiques essentielles
+        progress = self.scenario.get_progress()
+        stats = [
+            f"Triés: {progress['sorted_count']}/{progress['total_count']}",
+            f"État: {self.scenario.state.value}",
+        ]
+        
+        # État de la pince
+        if self.gripper.is_holding_object() and self.gripper.held_object:
+            stats.append(f"Tient: {self.gripper.held_object.color}")
+        else:
+            stats.append(f"Pince: {self.gripper.state.value}")
+        
+        for stat in stats:
+            stat_surface = self.small_font.render(stat, True, self.BLACK)
+            self.screen.blit(stat_surface, (x_start, y_offset))
+            y_offset += line_height
+        
+        # Commandes pick & place
+        y_offset += 5
+        commands = ["P:Tri auto", "C:Nouveaux", "O:Pince"]
+        for cmd in commands:
+            cmd_surface = self.small_font.render(cmd, True, (100, 100, 100))
+            self.screen.blit(cmd_surface, (x_start, y_offset))
+            y_offset += 16
+    
     def draw_info(self):
         """Dessine les informations à l'écran"""
         if not self.show_info:
@@ -291,6 +434,10 @@ class RobotSimulator:
             "R: Réinitialiser",
             "G: Grille On/Off",
             "W: Workspace On/Off",
+            "O: Ouvrir/fermer pince",
+            "P: Tri automatique",
+            "C: Nouveaux cubes",
+            "S: Pause/reprendre",
             "ESC: Quitter"
         ]
         
@@ -388,6 +535,43 @@ class RobotSimulator:
                 
                 elif event.key == pygame.K_i:
                     self.show_info = not self.show_info
+                
+                elif event.key == pygame.K_o:
+                    # Ouvrir/fermer la pince manuellement
+                    if self.gripper.is_open() or self.gripper.state.value == "open":
+                        self.gripper.close()
+                    else:
+                        self.gripper.open()
+                
+                elif event.key == pygame.K_p:
+                    # Démarrer/arrêter le tri automatique
+                    if not self.auto_sorting:
+                        # Initialiser le scénario si nécessaire
+                        if self.scenario.state == ScenarioState.IDLE and len(self.object_manager.cubes) == 0:
+                            self.scenario.initialize(num_cubes=4)
+                        
+                        if self.scenario.state == ScenarioState.IDLE:
+                            self.scenario.start()
+                            self.auto_sorting = True
+                    else:
+                        self.auto_sorting = False
+                        self.scenario.stop()
+                        self.current_trajectory = None
+                
+                elif event.key == pygame.K_c:
+                    # Créer de nouveaux cubes
+                    self.scenario.initialize(num_cubes=4)
+                    self.auto_sorting = False
+                    self.current_trajectory = None
+                
+                elif event.key == pygame.K_s:
+                    # Pause/reprendre le scénario
+                    if self.scenario.state == ScenarioState.RUNNING:
+                        self.scenario.pause()
+                        self.auto_sorting = False
+                    elif self.scenario.state == ScenarioState.PAUSED:
+                        self.scenario.resume()
+                        self.auto_sorting = True
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Clic gauche
@@ -423,6 +607,81 @@ class RobotSimulator:
         
         return True
     
+    def update_auto_sorting(self, dt: float):
+        """Met à jour le tri automatique"""
+        if not self.auto_sorting or self.scenario.state != ScenarioState.RUNNING:
+            return
+        
+        # Mettre à jour la pince
+        self.gripper.update(dt)
+        
+        # Mettre à jour la position du cube tenu
+        if self.gripper.held_object:
+            positions = self.kinematics.get_joint_positions(self.theta1, self.theta2)
+            end_x, end_y = positions['end_effector']
+            joint1_x, joint1_y = positions['joint1']
+            angle = np.arctan2(end_y - joint1_y, end_x - joint1_x)
+            gripper_x = end_x + self.config.gripper_length * np.cos(angle)
+            gripper_y = end_y + self.config.gripper_length * np.sin(angle)
+            self.gripper.held_object.set_position(gripper_x, gripper_y)
+        
+        # Si on n'a pas de trajectoire en cours, planifier la prochaine
+        if self.current_trajectory is None and not self.animating:
+            # Obtenir la position actuelle
+            current_pos = self.kinematics.forward_kinematics(self.theta1, self.theta2)
+            
+            # Planifier le prochain mouvement
+            result = self.scenario.execute_sort_step(current_pos)
+            
+            if result is not None:
+                trajectory, description = result
+                self.current_trajectory = trajectory
+                self.trajectory_index = 0
+                self.trajectory_total = len(trajectory)
+                # Ouvrir la pince au début
+                if not self.gripper.is_open():
+                    self.gripper.open()
+            else:
+                # Tri terminé ou impossible
+                progress = self.scenario.get_progress()
+                if progress['sorted_count'] == progress['total_count']:
+                    self.scenario.state = ScenarioState.COMPLETED
+                self.auto_sorting = False
+                self.current_trajectory = None
+        
+        # Exécuter la trajectoire point par point
+        if self.current_trajectory is not None and not self.animating:
+            if self.trajectory_index < len(self.current_trajectory):
+                # Prendre le prochain point (format: [x, y, theta1, theta2])
+                point = self.current_trajectory[self.trajectory_index]
+                theta1, theta2 = point[2], point[3]
+                self.start_animation(theta1, theta2)
+                
+                # Gestion de la pince selon la progression
+                progress_ratio = self.trajectory_index / self.trajectory_total
+                
+                # Fermer la pince à 30% de la trajectoire (descente vers le cube)
+                if 0.25 < progress_ratio < 0.35 and self.gripper.is_open() and not self.gripper.held_object:
+                    self.gripper.close()
+                
+                # Saisir le cube à 40% (après fermeture)
+                if 0.35 < progress_ratio < 0.45 and self.gripper.is_closed() and not self.gripper.held_object:
+                    if self.scenario.current_cube:
+                        self.gripper.grasp_object(self.scenario.current_cube)
+                        self.scenario.on_cube_picked()
+                
+                # Ouvrir la pince à 75% (au-dessus de la zone de dépôt)
+                if 0.70 < progress_ratio < 0.80 and self.gripper.is_closed() and self.gripper.held_object:
+                    self.gripper.open()
+                    if self.scenario.current_cube:
+                        self.scenario.on_cube_placed()
+                
+                self.trajectory_index += 1
+            else:
+                # Trajectoire terminée, réinitialiser pour le prochain cube
+                self.current_trajectory = None
+                self.trajectory_index = 0
+    
     def run(self):
         """Boucle principale du simulateur"""
         running = True
@@ -433,6 +692,7 @@ class RobotSimulator:
             # Gestion des événements
             running = self.handle_input()
             self.update_animation(dt)
+            self.update_auto_sorting(dt)
             
             # Effacer l'écran
             self.screen.fill(self.WHITE)
@@ -440,10 +700,13 @@ class RobotSimulator:
             # Dessiner les éléments
             self.draw_grid()
             self.draw_workspace()
+            self.draw_objects()
             self.draw_trajectory()
             self.draw_target()
             self.draw_robot()
+            self.draw_gripper()
             self.draw_info()
+            #self.draw_scenario_info()
             
             # Mettre à jour l'affichage
             pygame.display.flip()

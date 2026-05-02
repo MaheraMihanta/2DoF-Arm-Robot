@@ -64,6 +64,43 @@ class RobotConfig:
         self.scale_factor = 0.7  # Facteur d'échelle mm -> pixels
         self.display_margin = 40
         
+        # Paramètres de la pince (gripper)
+        self.gripper_length = 40.0  # mm depuis l'effecteur
+        self.gripper_width_open = 80.0  # mm
+        self.gripper_width_closed = 30.0  # mm
+        self.gripper_speed = 0.3  # secondes pour ouvrir/fermer
+        
+        # Paramètres des objets manipulables
+        self.cube_size = 20.0  # mm (taille des cubes)
+        self.grasp_tolerance = 5.0  # mm (tolérance pour la saisie)
+        self.drop_height = 5.0  # mm au-dessus de la zone de dépôt
+        self.approach_height = 50.0  # mm pour l'approche verticale
+        
+        # Zones de dépôt par couleur (positions en mm)
+        # Ajustées pour être toutes atteignables (L1+L2=350mm)
+        self.drop_zones = {
+            'red': (250.0, 150.0),      # Distance ~290mm
+            'blue': (250.0, 50.0),      # Distance ~255mm
+            'green': (150.0, 200.0),    # Distance ~250mm
+            'yellow': (150.0, 50.0)     # Distance ~158mm
+        }
+        
+        # Couleurs des cubes (RGB)
+        self.cube_colors = {
+            'red': (255, 50, 50),
+            'blue': (50, 100, 255),
+            'green': (50, 200, 50),
+            'yellow': (255, 220, 50)
+        }
+        
+        # Couleurs des zones de dépôt (RGB, plus claires)
+        self.zone_colors = {
+            'red': (255, 180, 180),
+            'blue': (180, 200, 255),
+            'green': (180, 255, 180),
+            'yellow': (255, 255, 180)
+        }
+        
     def is_angle_valid(self, theta1, theta2):
         """
         Vérifie si les angles sont dans les limites autorisées

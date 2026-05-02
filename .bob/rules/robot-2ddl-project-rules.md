@@ -6,7 +6,7 @@ Ces regles s'appliquent a toutes les conversations IBM Bob dans ce depot.
 
 - Le projet est un bras robotique 2DDL asservi en position, avec simulation, interface materielle GRBL/A4988, interface graphique et documentation.
 - L'objectif hackathon est de montrer comment IBM Bob aide a comprendre, ameliorer, tester et documenter un projet existant, pas de masquer le travail deja realise.
-- Toute amelioration doit rester demonstrable en simulation sans materiel, puis compatible avec le mode hardware quand c'est pertinent.
+- Toute amelioration doit rester demontrable en simulation sans materiel, puis compatible avec le mode hardware quand c'est pertinent.
 
 ## Structure a respecter
 
