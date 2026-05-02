@@ -74,6 +74,13 @@ class RobotGUI:
         self.pp_state_var = tk.StringVar(value="Non initialisé")
         self.pp_score_var = tk.StringVar(value="Score: 0/0")
         self.pp_progress_var = tk.StringVar(value="Progression: 0%")
+        
+        # Variables pour l'animation de la pince et des cubes
+        self._pp_current_trajectory = None
+        self._pp_current_cube = None
+        self._pp_drop_zone = None
+        self._pp_trajectory_index = 0
+        self._pp_trajectory_total = 0
 
         self.status_text_var = tk.StringVar(value="Non connecté")
         self.motion_text_var = tk.StringVar(value="Repos")
@@ -1187,6 +1194,16 @@ class RobotGUI:
             # Exécuter la trajectoire
             self.pp_log_action(f"→ Saisie du cube {next_cube.color} à ({next_cube.x:.0f}, {next_cube.y:.0f})")
             
+            # Marquer le cube comme étant en cours de manipulation
+            self.pp_scenario.current_cube = next_cube
+            
+            # Démarrer l'animation de la pince et du cube
+            self._pp_trajectory_index = 0
+            self._pp_current_trajectory = trajectory
+            self._pp_current_cube = next_cube
+            self._pp_drop_zone = drop_zone
+            self._pp_trajectory_total = len(trajectory)
+            
             def execute_trajectory():
                 success = self.robot.execute_trajectory(
                     trajectory,
@@ -1199,7 +1216,6 @@ class RobotGUI:
                     next_cube.set_position(drop_zone.x, drop_zone.y)
                     
                     # Les callbacks sont déjà appelés par le scénario
-                    # on_cube_picked() et on_cube_placed() ne prennent pas de paramètres
                     self.pp_scenario.on_cube_placed()
                     
                     self.root.after(0, lambda: self.pp_log_action(
@@ -1207,13 +1223,22 @@ class RobotGUI:
                     ))
                     self.root.after(0, self.pp_update_display)
                     
+                    # Réinitialiser les variables de trajectoire
+                    self._pp_current_trajectory = None
+                    self._pp_current_cube = None
+                    
                     # Continuer avec le prochain cube
                     self.root.after(500, self.pp_execute_next_step)
                 else:
                     self.root.after(0, lambda: self.pp_log_action(
                         f"✗ Échec du placement du cube {next_cube.color}"
                     ))
+                    self._pp_current_trajectory = None
+                    self._pp_current_cube = None
                     self.root.after(500, self.pp_execute_next_step)
+            
+            # Démarrer la mise à jour de la pince et du cube
+            self.pp_update_gripper_and_cube()
             
             threading.Thread(target=execute_trajectory, daemon=True).start()
             
@@ -1221,6 +1246,77 @@ class RobotGUI:
             self.log(f"Erreur lors de l'exécution: {exc}")
             self.pp_log_action(f"✗ Erreur: {exc}")
             messagebox.showerror("Erreur", str(exc))
+    
+    def pp_update_gripper_and_cube(self):
+        """Met à jour l'état de la pince et la position du cube pendant l'exécution."""
+        if self._pp_current_trajectory is None or not self.robot:
+            return
+        
+        # Obtenir la position actuelle du robot
+        theta1 = self.robot.current_theta1
+        theta2 = self.robot.current_theta2
+        
+        # Calculer la progression dans la trajectoire
+        if self._pp_trajectory_total > 0:
+            # Trouver le point de trajectoire le plus proche de la position actuelle
+            current_pos = self.robot.kinematics.forward_kinematics(theta1, theta2)
+            min_dist = float('inf')
+            closest_index = 0
+            
+            for i, point in enumerate(self._pp_current_trajectory):
+                dist = np.hypot(point[0] - current_pos[0], point[1] - current_pos[1])
+                if dist < min_dist:
+                    min_dist = dist
+                    closest_index = i
+            
+            progress_ratio = closest_index / self._pp_trajectory_total
+            
+            # Gérer l'état de la pince selon la progression
+            # Ouvrir la pince au début (0-20%)
+            if progress_ratio < 0.20:
+                if not self.pp_gripper.is_open() and not self.pp_gripper.is_animating():
+                    self.pp_gripper.open()
+            
+            # Fermer la pince pour saisir (25-35%)
+            elif 0.25 < progress_ratio < 0.35:
+                if not self.pp_gripper.is_closed() and not self.pp_gripper.is_animating():
+                    self.pp_gripper.close()
+            
+            # Saisir le cube (35-45%)
+            elif 0.35 < progress_ratio < 0.45:
+                if self.pp_gripper.is_closed() and not self.pp_gripper.is_holding_object():
+                    if self._pp_current_cube:
+                        self.pp_gripper.grasp_object(self._pp_current_cube)
+                        self.pp_scenario.on_cube_picked()
+            
+            # Ouvrir la pince pour déposer (70-80%)
+            elif 0.70 < progress_ratio < 0.80:
+                if self.pp_gripper.is_closed() and self.pp_gripper.is_holding_object():
+                    self.pp_gripper.open()
+            
+            # Mettre à jour la position du cube tenu
+            if self.pp_gripper.held_object and self.robot:
+                positions = self.robot.kinematics.get_joint_positions(theta1, theta2)
+                end_x, end_y = positions['end_effector']
+                joint1_x, joint1_y = positions['joint1']
+                angle = np.arctan2(end_y - joint1_y, end_x - joint1_x)
+                
+                # Position de la pince
+                gripper_x = end_x + self.config.gripper_length * np.cos(angle)
+                gripper_y = end_y + self.config.gripper_length * np.sin(angle)
+                
+                # Mettre à jour la position du cube
+                self.pp_gripper.held_object.set_position(gripper_x, gripper_y)
+        
+        # Mettre à jour l'animation de la pince
+        self.pp_gripper.update(0.05)  # 50ms
+        
+        # Redessiner la vue
+        self.draw_live_view()
+        
+        # Continuer la mise à jour si la trajectoire est toujours en cours
+        if self._pp_current_trajectory is not None:
+            self.root.after(50, self.pp_update_gripper_and_cube)
     
     def pp_update_display(self):
         """Met à jour l'affichage du scénario Pick & Place."""
