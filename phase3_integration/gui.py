@@ -799,6 +799,11 @@ class RobotGUI:
         self.canvas.create_line(0, center_y, self.canvas_width, center_y, fill="#c2c7d0", width=1)
         self.canvas.create_line(center_x, 0, center_x, self.canvas_height, fill="#c2c7d0", width=1)
 
+        # Dessiner les zones de dépôt et cubes si le scénario Pick & Place est actif
+        if self.pp_object_manager:
+            self.draw_drop_zones()
+            self.draw_cubes()
+
         if self.planned_trajectory is not None:
             self.draw_polyline(self.planned_trajectory[:, :2], color="#c792ea", width=2, dash=(4, 3))
 
@@ -809,9 +814,16 @@ class RobotGUI:
         if self.live_snapshot:
             target = (self.live_snapshot["target_x"], self.live_snapshot["target_y"])
             self.draw_target(target, color="#15a34a")
-            self.draw_robot(self.live_snapshot["theta1"], self.live_snapshot["theta2"])
+            theta1 = self.live_snapshot["theta1"]
+            theta2 = self.live_snapshot["theta2"]
+            self.draw_robot(theta1, theta2)
+            # Dessiner la pince après le robot
+            if self.pp_gripper:
+                self.draw_gripper(theta1, theta2)
         else:
             self.draw_robot(0.0, 0.0)
+            if self.pp_gripper:
+                self.draw_gripper(0.0, 0.0)
 
     def draw_grid(self, scale: float):
         spacing_mm = 50
@@ -861,18 +873,145 @@ class RobotGUI:
         joint1 = self.world_to_canvas(*positions["joint1"])
         end_effector = self.world_to_canvas(*positions["end_effector"])
 
-        self.canvas.create_line(*base, *joint1, fill="#0a6fff", width=8, capstyle=tk.ROUND)
-        self.canvas.create_line(*joint1, *end_effector, fill="#ff8c2b", width=8, capstyle=tk.ROUND)
-
-        self.canvas.create_oval(base[0] - 12, base[1] - 12, base[0] + 12, base[1] + 12, fill="#737373", outline="#2b2b2b")
-        self.canvas.create_oval(joint1[0] - 10, joint1[1] - 10, joint1[0] + 10, joint1[1] + 10, fill="#ce2d2d", outline="#5f1111")
+    
+    def draw_drop_zones(self):
+        """Dessine les zones de dépôt sur le canvas principal."""
+        if not self.pp_object_manager:
+            return
+        
+        color_map = {
+            'red': '#ef4444',
+            'blue': '#3b82f6',
+            'green': '#22c55e',
+            'yellow': '#eab308'
+        }
+        
+        for zone in self.pp_object_manager.drop_zones:
+            cx, cy = self.world_to_canvas(zone.x, zone.y)
+            scale = self.get_canvas_scale()
+            zone_size = int(zone.size * scale)
+            
+            # Rectangle de la zone avec couleur claire et transparence
+            light_color = color_map.get(zone.color, '#cccccc')
+            self.canvas.create_rectangle(
+                cx - zone_size // 2, cy - zone_size // 2,
+                cx + zone_size // 2, cy + zone_size // 2,
+                fill=light_color, outline=light_color, width=2,
+                stipple='gray50'  # Motif hachuré
+            )
+    
+    def draw_cubes(self):
+        """Dessine les cubes sur le canvas principal."""
+        if not self.pp_object_manager:
+            return
+        
+        color_map = {
+            'red': '#ef4444',
+            'blue': '#3b82f6',
+            'green': '#22c55e',
+            'yellow': '#eab308'
+        }
+        
+        scale = self.get_canvas_scale()
+        
+        for cube in self.pp_object_manager.cubes:
+            cx, cy = self.world_to_canvas(cube.x, cube.y)
+            cube_size = int(cube.size * scale)
+            
+            # Rectangle du cube
+            self.canvas.create_rectangle(
+                cx - cube_size // 2, cy - cube_size // 2,
+                cx + cube_size // 2, cy + cube_size // 2,
+                fill=color_map.get(cube.color, '#cccccc'),
+                outline='#000000', width=3 if cube.is_grasped else 1
+            )
+            
+            # Indicateur si le cube est saisi
+            if cube.is_grasped:
+                cross_size = cube_size // 3
+                self.canvas.create_line(
+                    cx - cross_size, cy, cx + cross_size, cy,
+                    fill='white', width=2
+                )
+                self.canvas.create_line(
+                    cx, cy - cross_size, cx, cy + cross_size,
+                    fill='white', width=2
+                )
+    
+    def draw_gripper(self, theta1: float, theta2: float):
+        """Dessine la pince sur le canvas principal."""
+        if not self.pp_gripper:
+            return
+        
+        # Obtenir les positions des articulations
+        if self.robot:
+            positions = self.robot.kinematics.get_joint_positions(theta1, theta2)
+        else:
+            # Position par défaut
+            positions = {
+                "base": (0.0, 0.0),
+                "joint1": (self.config.L1 * np.cos(theta1), self.config.L1 * np.sin(theta1)),
+                "end_effector": (
+                    self.config.L1 * np.cos(theta1) + self.config.L2 * np.cos(theta1 + theta2),
+                    self.config.L1 * np.sin(theta1) + self.config.L2 * np.sin(theta1 + theta2)
+                )
+            }
+        
+        end_x, end_y = positions['end_effector']
+        joint1_x, joint1_y = positions['joint1']
+        
+        # Calculer l'angle de l'effecteur
+        angle = np.arctan2(end_y - joint1_y, end_x - joint1_x)
+        
+        # Position de la pince (prolongement de l'effecteur)
+        gripper_x = end_x + self.config.gripper_length * np.cos(angle)
+        gripper_y = end_y + self.config.gripper_length * np.sin(angle)
+        
+        # Convertir en coordonnées canvas
+        end_canvas = self.world_to_canvas(end_x, end_y)
+        gripper_canvas = self.world_to_canvas(gripper_x, gripper_y)
+        
+        # Dessiner le bras de la pince
+        self.canvas.create_line(
+            *end_canvas, *gripper_canvas,
+            fill='#666666', width=4
+        )
+        
+        # Calculer les positions des mâchoires
+        half_width = self.pp_gripper.current_width / 2.0
+        perpendicular_angle = angle + np.pi / 2
+        
+        jaw1_x = gripper_x + half_width * np.cos(perpendicular_angle)
+        jaw1_y = gripper_y + half_width * np.sin(perpendicular_angle)
+        jaw2_x = gripper_x - half_width * np.cos(perpendicular_angle)
+        jaw2_y = gripper_y - half_width * np.sin(perpendicular_angle)
+        
+        jaw1_canvas = self.world_to_canvas(jaw1_x, jaw1_y)
+        jaw2_canvas = self.world_to_canvas(jaw2_x, jaw2_y)
+        
+        # Couleur selon l'état de la pince
+        if self.pp_gripper.is_closed():
+            jaw_color = '#c82020'  # Rouge fermé
+        elif self.pp_gripper.is_open():
+            jaw_color = '#20c820'  # Vert ouvert
+        else:
+            jaw_color = '#ffa500'  # Orange en mouvement
+        
+        # Dessiner les mâchoires
+        self.canvas.create_line(
+            *gripper_canvas, *jaw1_canvas,
+            fill=jaw_color, width=6
+        )
+        self.canvas.create_line(
+            *gripper_canvas, *jaw2_canvas,
+            fill=jaw_color, width=6
+        )
+        
+        # Articulation de la pince
         self.canvas.create_oval(
-            end_effector[0] - 11,
-            end_effector[1] - 11,
-            end_effector[0] + 11,
-            end_effector[1] + 11,
-            fill="#16a34a",
-            outline="#0f5e2d",
+            gripper_canvas[0] - 8, gripper_canvas[1] - 8,
+            gripper_canvas[0] + 8, gripper_canvas[1] + 8,
+            fill='#333333', outline='#000000', width=2
         )
 
     def on_canvas_click(self, event):
@@ -1084,11 +1223,31 @@ class RobotGUI:
         self.pp_draw_objects_visualization()
     
     def pp_draw_objects_visualization(self):
-        """Dessine une visualisation simplifiée des objets et zones."""
+        """Dessine une visualisation 2D complète avec le bras, les cubes et les zones."""
         if not self.pp_object_manager:
             return
         
         self.pp_viz_canvas.delete("all")
+        
+        # Dimensions du canvas
+        canvas_width = 680
+        canvas_height = 120
+        
+        # Calculer l'échelle pour adapter l'espace de travail au canvas
+        # L'espace de travail du robot est environ 700mm de large (de -350 à +350)
+        workspace_width = 700  # mm
+        workspace_height = 400  # mm
+        scale = min(canvas_width / workspace_width, canvas_height / workspace_height) * 0.8
+        
+        # Centre du canvas
+        origin_x = canvas_width // 2
+        origin_y = canvas_height // 2
+        
+        def world_to_canvas(x, y):
+            """Convertit coordonnées monde (mm) en coordonnées canvas (pixels)."""
+            cx = int(origin_x + x * scale)
+            cy = int(origin_y - y * scale)
+            return cx, cy
         
         # Définir les couleurs
         color_map = {
@@ -1098,53 +1257,171 @@ class RobotGUI:
             'yellow': '#eab308'
         }
         
-        # Dessiner les zones de dépôt
-        x_offset = 20
-        zone_width = 150
-        zone_height = 80
+        # Dessiner l'espace de travail (cercles min/max)
+        r_max = int((self.config.L1 + self.config.L2) * scale)
+        r_min = int(abs(self.config.L1 - self.config.L2) * scale)
         
-        for i, zone in enumerate(self.pp_object_manager.drop_zones):
-            x = x_offset + i * (zone_width + 10)
-            y = 20
+        self.pp_viz_canvas.create_oval(
+            origin_x - r_max, origin_y - r_max,
+            origin_x + r_max, origin_y + r_max,
+            outline='#d4def0', width=1
+        )
+        if r_min > 1:
+            self.pp_viz_canvas.create_oval(
+                origin_x - r_min, origin_y - r_min,
+                origin_x + r_min, origin_y + r_min,
+                outline='#f1d8c9', width=1
+            )
+        
+        # Dessiner les axes
+        self.pp_viz_canvas.create_line(
+            0, origin_y, canvas_width, origin_y,
+            fill='#e0e0e0', width=1
+        )
+        self.pp_viz_canvas.create_line(
+            origin_x, 0, origin_x, canvas_height,
+            fill='#e0e0e0', width=1
+        )
+        
+        # Dessiner les zones de dépôt
+        for zone in self.pp_object_manager.drop_zones:
+            cx, cy = world_to_canvas(zone.x, zone.y)
+            zone_size = int(zone.size * scale)
             
-            # Rectangle de la zone
+            # Rectangle de la zone avec couleur claire
+            light_color = color_map.get(zone.color, '#cccccc')
             self.pp_viz_canvas.create_rectangle(
-                x, y, x + zone_width, y + zone_height,
-                fill=color_map.get(zone.color, '#cccccc'),
-                outline='#333333', width=2
+                cx - zone_size // 2, cy - zone_size // 2,
+                cx + zone_size // 2, cy + zone_size // 2,
+                fill=light_color, outline=light_color, width=2,
+                stipple='gray50'  # Motif hachuré pour différencier des cubes
+            )
+        
+        # Dessiner les cubes
+        for cube in self.pp_object_manager.cubes:
+            cx, cy = world_to_canvas(cube.x, cube.y)
+            cube_size = int(cube.size * scale)
+            
+            # Rectangle du cube
+            self.pp_viz_canvas.create_rectangle(
+                cx - cube_size // 2, cy - cube_size // 2,
+                cx + cube_size // 2, cy + cube_size // 2,
+                fill=color_map.get(cube.color, '#cccccc'),
+                outline='#000000', width=2 if cube.is_grasped else 1
             )
             
-            # Nom de la zone
-            self.pp_viz_canvas.create_text(
-                x + zone_width // 2, y + 15,
-                text=f"Zone {zone.color}",
-                fill='white', font=('', 9, 'bold')
-            )
-            
-            # Compter les cubes dans cette zone
-            cubes_in_zone = [c for c in self.pp_object_manager.cubes
-                           if zone.is_correct_placement(c)]
-            
-            # Dessiner les cubes dans la zone
-            for j, cube in enumerate(cubes_in_zone):
-                cube_x = x + 20 + (j % 5) * 25
-                cube_y = y + 40 + (j // 5) * 25
-                self.pp_viz_canvas.create_rectangle(
-                    cube_x, cube_y, cube_x + 20, cube_y + 20,
-                    fill=color_map.get(cube.color, '#cccccc'),
-                    outline='#000000', width=1
+            # Indicateur si le cube est saisi
+            if cube.is_grasped:
+                cross_size = cube_size // 3
+                self.pp_viz_canvas.create_line(
+                    cx - cross_size, cy, cx + cross_size, cy,
+                    fill='white', width=2
+                )
+                self.pp_viz_canvas.create_line(
+                    cx, cy - cross_size, cx, cy + cross_size,
+                    fill='white', width=2
                 )
         
-        # Afficher le nombre de cubes restants
-        remaining = len([c for c in self.pp_object_manager.cubes
-                        if not any(zone.is_correct_placement(c)
-                                 for zone in self.pp_object_manager.drop_zones)])
+        # Dessiner le bras robotique
+        if self.robot:
+            theta1 = self.robot.current_theta1
+            theta2 = self.robot.current_theta2
+            positions = self.robot.kinematics.get_joint_positions(theta1, theta2)
+        else:
+            # Position par défaut si pas de robot connecté
+            theta1, theta2 = 0.0, 0.0
+            positions = {
+                "base": (0.0, 0.0),
+                "joint1": (self.config.L1 * np.cos(theta1), self.config.L1 * np.sin(theta1)),
+                "end_effector": (
+                    self.config.L1 * np.cos(theta1) + self.config.L2 * np.cos(theta1 + theta2),
+                    self.config.L1 * np.sin(theta1) + self.config.L2 * np.sin(theta1 + theta2)
+                )
+            }
         
-        self.pp_viz_canvas.create_text(
-            340, 105,
-            text=f"Cubes restants à trier: {remaining}",
-            font=('', 10, 'bold')
+        base = world_to_canvas(*positions["base"])
+        joint1 = world_to_canvas(*positions["joint1"])
+        end_effector = world_to_canvas(*positions["end_effector"])
+        
+        # Dessiner les segments du bras
+        self.pp_viz_canvas.create_line(
+            *base, *joint1,
+            fill='#0a6fff', width=4, capstyle=tk.ROUND
         )
+        self.pp_viz_canvas.create_line(
+            *joint1, *end_effector,
+            fill='#ff8c2b', width=4, capstyle=tk.ROUND
+        )
+        
+        # Dessiner les articulations
+        self.pp_viz_canvas.create_oval(
+            base[0] - 6, base[1] - 6, base[0] + 6, base[1] + 6,
+            fill='#737373', outline='#2b2b2b'
+        )
+        self.pp_viz_canvas.create_oval(
+            joint1[0] - 5, joint1[1] - 5, joint1[0] + 5, joint1[1] + 5,
+            fill='#ce2d2d', outline='#5f1111'
+        )
+        self.pp_viz_canvas.create_oval(
+            end_effector[0] - 5, end_effector[1] - 5,
+            end_effector[0] + 5, end_effector[1] + 5,
+            fill='#16a34a', outline='#0f5e2d'
+        )
+        
+        # Dessiner la pince
+        if self.pp_gripper:
+            # Calculer la position et l'angle de la pince
+            end_x, end_y = positions['end_effector']
+            joint1_x, joint1_y = positions['joint1']
+            angle = np.arctan2(end_y - joint1_y, end_x - joint1_x)
+            
+            # Position de la pince (prolongement de l'effecteur)
+            gripper_x = end_x + self.config.gripper_length * np.cos(angle)
+            gripper_y = end_y + self.config.gripper_length * np.sin(angle)
+            gripper_pos = world_to_canvas(gripper_x, gripper_y)
+            
+            # Dessiner le bras de la pince
+            self.pp_viz_canvas.create_line(
+                *end_effector, *gripper_pos,
+                fill='#666666', width=2
+            )
+            
+            # Calculer les positions des mâchoires
+            half_width = self.pp_gripper.current_width / 2.0
+            perpendicular_angle = angle + np.pi / 2
+            
+            jaw1_x = gripper_x + half_width * np.cos(perpendicular_angle)
+            jaw1_y = gripper_y + half_width * np.sin(perpendicular_angle)
+            jaw2_x = gripper_x - half_width * np.cos(perpendicular_angle)
+            jaw2_y = gripper_y - half_width * np.sin(perpendicular_angle)
+            
+            jaw1_pos = world_to_canvas(jaw1_x, jaw1_y)
+            jaw2_pos = world_to_canvas(jaw2_x, jaw2_y)
+            
+            # Couleur selon l'état de la pince
+            if self.pp_gripper.is_closed():
+                jaw_color = '#c82020'  # Rouge fermé
+            elif self.pp_gripper.is_open():
+                jaw_color = '#20c820'  # Vert ouvert
+            else:
+                jaw_color = '#ffa500'  # Orange en mouvement
+            
+            # Dessiner les mâchoires
+            self.pp_viz_canvas.create_line(
+                *gripper_pos, *jaw1_pos,
+                fill=jaw_color, width=3
+            )
+            self.pp_viz_canvas.create_line(
+                *gripper_pos, *jaw2_pos,
+                fill=jaw_color, width=3
+            )
+            
+            # Articulation de la pince
+            self.pp_viz_canvas.create_oval(
+                gripper_pos[0] - 4, gripper_pos[1] - 4,
+                gripper_pos[0] + 4, gripper_pos[1] + 4,
+                fill='#333333', outline='#000000'
+            )
     
     def pp_log_action(self, message: str):
         """Ajoute un message dans l'historique des actions."""
