@@ -1,0 +1,1119 @@
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!50!black,
+    urlcolor=blue!50!black,
+    citecolor=blue!50!black
+}
+
+\lstdefinestyle{pythonstyle}{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue!60!black},
+    commentstyle=\color{green!40!black},
+    stringstyle=\color{red!50!black},
+    showstringspaces=false,
+    breaklines=true,
+    frame=single
+}
+
+\lstdefinestyle{codestyle}{
+    basicstyle=\ttfamily\small,
+    showstringspaces=false,
+    breaklines=true,
+    frame=single
+}
+
+\newcommand{\Lone}{L_1}
+\newcommand{\Ltwo}{L_2}
+\newcommand{\Lthree}{L_3}
+\newcommand{\thone}{\theta_1}
+\newcommand{\thtwo}{\theta_2}
+\newcommand{\ththree}{\theta_3}
+\newcommand{\ddof}{2~DDL}
+\newcommand{\workspace}{espace de travail}
+\newcommand{\placeholder}[2]{
+    \begin{figure}[H]
+        \centering
+        \fbox{
+            \parbox[c][6cm][c]{0.85\linewidth}{
+                \centering
+                \textbf{Emplacement réservé pour une capture d'écran}\\[0.5em]
+                #2
+            }
+        }
+        \caption{#1}
+    \end{figure}
+}
+
+\title{
+    \Huge Étude, modélisation et implémentation\\[0.4em]
+    d'un bras robotique plan à deux degrés de liberté\\[0.4em]
+    \Large avec simulation, trajectoires et perspective d'intégration GRBL
+}
+\author{Projet de thèse}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\clearpage
+
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+
+Ce document présente de manière détaillée le projet de réalisation d'un bras robotique
+plan à deux degrés de liberté, commandé en position à partir d'un modèle cinématique et
+destiné à évoluer vers une validation expérimentale sur prototype physique. Le travail
+réunit trois dimensions complémentaires : la théorie mathématique, l'implémentation
+logicielle et la préparation à l'intégration matérielle.
+
+Le coeur du projet repose sur la cinématique directe et inverse d'un manipulateur plan
+de type $RR$, c'est-à-dire deux articulations rotoïdes en série. Le modèle obtenu permet
+de passer d'une représentation articulaire $(\thone,\thtwo)$ à une représentation
+cartésienne $(x,y)$, puis d'inverser cette relation pour atteindre un point cible.
+Sur cette base, le projet met en oeuvre plusieurs modes de fonctionnement : une
+simulation graphique, une exécution de trajectoires et un mode hybride combinant
+visualisation et dialogue avec une chaîne de commande inspirée de GRBL.
+
+L'objectif final n'est pas seulement de déplacer un bras dans une animation, mais de
+montrer la cohérence entre les modèles mathématiques, les décisions logicielles et la
+future validation matérielle. Cette cohérence est essentielle dans un contexte de thèse,
+car elle permet de démontrer que l'implémentation numérique constitue déjà une preuve de
+faisabilité avant la fabrication complète du prototype.
+
+\chapter{Introduction générale}
+
+\section{Contexte}
+
+Les bras robotiques à faible nombre de degrés de liberté constituent un excellent cadre
+d'étude pour aborder la robotique de manière rigoureuse. Ils permettent d'introduire
+les notions fondamentales de cinématique, d'espace de travail, de singularité, de
+génération de trajectoires et de commande, tout en conservant une complexité compatible
+avec une première validation expérimentale.
+
+Dans ce projet, le système étudié est un bras robotique plan à deux degrés de liberté.
+Le bras comprend deux segments rigides, articulés autour de deux axes de rotation. Son
+effecteur final évolue dans le plan $(x,y)$, ce qui permet de relier naturellement les
+variables articulaires aux coordonnées cartésiennes d'un point à atteindre.
+
+\section{Problématique}
+
+La problématique générale peut être formulée ainsi :
+
+\begin{quote}
+Comment concevoir un système complet permettant de calculer les angles articulaires
+nécessaires pour atteindre une position donnée, de visualiser de manière crédible ce
+mouvement, puis de préparer le passage à une exécution réelle sur prototype commandé
+par GRBL ?
+\end{quote}
+
+Cette problématique se décompose en quatre sous-questions :
+
+\begin{enumerate}[label=\arabic*.]
+    \item Comment établir un modèle mathématique fiable du bras robotique ?
+    \item Comment transformer ce modèle en logiciel exécutable et observable ?
+    \item Comment structurer l'architecture pour préparer une liaison avec du matériel réel ?
+    \item Comment faire évoluer le système vers un troisième degré de liberté ?
+\end{enumerate}
+
+\section{Objectifs du projet}
+
+Les objectifs poursuivis sont les suivants :
+
+\begin{itemize}
+    \item établir la cinématique directe et inverse d'un bras plan \ddof ;
+    \item modéliser l'\workspace{} et les singularités du robot ;
+    \item implémenter une simulation graphique animée du mouvement ;
+    \item générer et exécuter des trajectoires cartésiennes ;
+    \item préparer une architecture logicielle compatible avec une chaîne matérielle pilotée par GRBL ;
+    \item définir une perspective claire d'extension vers un robot à trois degrés de liberté.
+\end{itemize}
+
+\section{Organisation du document}
+
+Le présent document suit une progression naturelle :
+
+\begin{itemize}
+    \item le chapitre \ref{chap:systeme} présente le système étudié ;
+    \item le chapitre \ref{chap:theorie} développe les modèles mathématiques ;
+    \item le chapitre \ref{chap:commande} décrit la génération des mouvements ;
+    \item le chapitre \ref{chap:implementation} détaille l'implémentation logicielle ;
+    \item le chapitre \ref{chap:grbl} introduit l'intégration future de GRBL sur prototype ;
+    \item le chapitre \ref{chap:perspectives} expose l'extension vers un troisième degré de liberté.
+\end{itemize}
+
+\chapter{Présentation du système}\label{chap:systeme}
+
+\section{Description mécanique}
+
+Le robot considéré est un manipulateur plan à deux articulations rotoïdes. Il est formé :
+
+\begin{itemize}
+    \item d'une base fixe ;
+    \item d'un premier segment de longueur $\Lone$ ;
+    \item d'un second segment de longueur $\Ltwo$ ;
+    \item d'un effecteur final situé à l'extrémité du second segment.
+\end{itemize}
+
+Dans l'état actuel du projet, les paramètres utilisés dans le logiciel sont :
+
+\begin{table}[H]
+    \centering
+    \caption{Paramètres principaux du bras robotique}
+    \begin{tabular}{>{\raggedright\arraybackslash}p{7cm}cc}
+        \toprule
+        Paramètre & Symbole & Valeur \\
+        \midrule
+        Longueur du premier segment & $\Lone$ & \SI{200}{mm} \\
+        Longueur du second segment & $\Ltwo$ & \SI{150}{mm} \\
+        Limite articulaire 1 & $\thone$ & $[-\pi,\pi]$ \\
+        Limite articulaire 2 & $\thtwo$ & $\left[-150^{\circ},150^{\circ}\right]$ \\
+        Pas moteur par révolution & -- & $200$ \\
+        Micro-pas & -- & $16$ \\
+        Fréquence d'animation & -- & \SI{60}{fps} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Repères et conventions}
+
+Le repère de travail est choisi de la manière suivante :
+
+\begin{itemize}
+    \item l'origine est placée à la base du robot ;
+    \item l'axe $x$ est horizontal et orienté vers la droite ;
+    \item l'axe $y$ est vertical et orienté vers le haut ;
+    \item les angles sont comptés dans le sens trigonométrique.
+\end{itemize}
+
+L'articulation 1 correspond à la rotation de base, tandis que l'articulation 2
+correspond à la rotation du coude.
+
+\placeholder
+{Schéma cinématique du bras robotique \ddof}
+{Insérer ici un schéma ou une capture représentant la base, les deux segments,
+les angles $\theta_1$ et $\theta_2$, ainsi que l'effecteur final.}
+
+\section{Hypothèses de modélisation}
+
+Pour conserver un cadre analytique clair, les hypothèses suivantes sont adoptées :
+
+\begin{itemize}
+    \item les segments sont supposés rigides ;
+    \item les liaisons sont parfaites et sans jeu dans la modélisation théorique ;
+    \item le mouvement est purement plan ;
+    \item les effets dynamiques, les frottements et les couples ne sont pas encore intégrés dans la loi de commande principale ;
+    \item le contrôle est actuellement de type position, en boucle ouverte, avec validation d'abord par simulation.
+\end{itemize}
+
+Ces hypothèses sont adaptées à une première phase de validation, où l'objectif
+principal est la cohérence cinématique et la faisabilité expérimentale.
+
+\chapter{Fondements théoriques et modèles mathématiques}\label{chap:theorie}
+
+\section{Cinématique directe}
+
+\subsection{Principe}
+
+La cinématique directe consiste à calculer la position cartésienne de l'effecteur final
+à partir des angles articulaires. Pour un bras plan \ddof, cette relation est obtenue
+par composition vectorielle des deux segments.
+
+\subsection{Équations}
+
+La position du premier joint intermédiaire est :
+
+\begin{align}
+    x_1 &= \Lone \cos(\thone), \\
+    y_1 &= \Lone \sin(\thone).
+\end{align}
+
+La position de l'effecteur final devient alors :
+
+\begin{align}
+    x &= \Lone \cos(\thone) + \Ltwo \cos(\thone + \thtwo), \label{eq:fkx} \\
+    y &= \Lone \sin(\thone) + \Ltwo \sin(\thone + \thtwo). \label{eq:fky}
+\end{align}
+
+Ces expressions constituent le modèle central de la cinématique directe.
+
+\subsection{Interprétation}
+
+La première contribution correspond à la projection du premier bras sur les axes du
+repère. La seconde contribution correspond à la projection du second bras, dont
+l'orientation absolue est la somme des deux angles articulaires.
+
+\subsection{Implémentation}
+
+Dans l'application, cette partie est prise en charge par le module
+\texttt{phase1\_simulation/kinematics.py}, au travers de la méthode
+\texttt{forward\_kinematics}. Ce calcul est utilisé :
+
+\begin{itemize}
+    \item pour afficher la position courante ;
+    \item pour dessiner le bras dans le simulateur ;
+    \item pour tracer l'historique de trajectoire ;
+    \item pour vérifier la cohérence de la cinématique inverse.
+\end{itemize}
+
+\section{Cinématique inverse}
+
+\subsection{Principe}
+
+La cinématique inverse consiste à déterminer les angles $(\thone,\thtwo)$ permettant
+d'atteindre une cible cartésienne $(x,y)$. Cette opération est plus délicate que la
+cinématique directe, car elle peut conduire à plusieurs solutions ou à aucune solution.
+
+\subsection{Calcul de la distance à la cible}
+
+La distance entre la base et le point cible vaut :
+
+\begin{equation}
+    r = \sqrt{x^2 + y^2}.
+\end{equation}
+
+Cette grandeur permet de savoir immédiatement si la cible appartient à l'\workspace{}.
+
+\subsection{Condition d'atteignabilité}
+
+Le point est atteignable si et seulement si :
+
+\begin{equation}
+    |\Lone - \Ltwo| \leq r \leq \Lone + \Ltwo.
+\end{equation}
+
+Pour les valeurs actuelles du projet, on obtient :
+
+\begin{align}
+    R_{\max} &= \Lone + \Ltwo = \SI{350}{mm}, \\
+    R_{\min} &= |\Lone - \Ltwo| = \SI{50}{mm}.
+\end{align}
+
+\subsection{Calcul de l'angle du coude}
+
+L'application de la loi des cosinus fournit :
+
+\begin{equation}
+    \cos(\thtwo) = \frac{r^2 - \Lone^2 - \Ltwo^2}{2 \Lone \Ltwo}.
+\end{equation}
+
+On en déduit :
+
+\begin{equation}
+    \thtwo = \pm \arccos\left(\frac{r^2 - \Lone^2 - \Ltwo^2}{2 \Lone \Ltwo}\right).
+\end{equation}
+
+Les deux signes correspondent aux deux configurations classiques :
+
+\begin{itemize}
+    \item coude vers le haut ;
+    \item coude vers le bas.
+\end{itemize}
+
+\subsection{Calcul de l'angle de base}
+
+Une fois $\thtwo$ déterminé, l'angle de base s'écrit :
+
+\begin{equation}
+    \thone = \operatorname{atan2}(y,x)
+    - \operatorname{atan2}\left(\Ltwo \sin(\thtwo), \Lone + \Ltwo \cos(\thtwo)\right).
+\end{equation}
+
+\subsection{Exemple numérique}
+
+Considérons la cible $(x,y) = (250,150)$~mm avec $\Lone=\SI{200}{mm}$ et
+$\Ltwo=\SI{150}{mm}$.
+
+\begin{align}
+    r &= \sqrt{250^2 + 150^2} = \SI{291.55}{mm}, \\
+    \cos(\thtwo) &= \frac{291.55^2 - 200^2 - 150^2}{2 \times 200 \times 150}
+    \approx 0.374.
+\end{align}
+
+On en déduit une solution de type coude vers le haut de l'ordre de :
+
+\begin{align}
+    \thtwo &\approx 68.0^\circ, \\
+    \thone &\approx 2.5^\circ.
+\end{align}
+
+Cette solution est cohérente avec l'implémentation actuellement validée dans le code.
+
+\subsection{Implémentation logicielle}
+
+L'algorithme de cinématique inverse est encapsulé dans la méthode
+\texttt{inverse\_kinematics}. Le logiciel :
+
+\begin{itemize}
+    \item vérifie d'abord l'atteignabilité du point ;
+    \item calcule ensuite $\cos(\thtwo)$ ;
+    \item borne numériquement cette valeur dans l'intervalle $[-1,1]$ ;
+    \item choisit l'une des deux branches ;
+    \item vérifie enfin les limites articulaires.
+\end{itemize}
+
+\section{Espace de travail}
+
+L'\workspace{} du bras est une couronne circulaire comprise entre les rayons
+$R_{\min}$ et $R_{\max}$.
+
+Cette géométrie a une conséquence importante pour l'interface utilisateur :
+un point visuellement situé trop près de la base ne doit pas être considéré comme
+atteignable, tout comme un point situé à l'extérieur du rayon maximum.
+
+L'affichage graphique du projet représente explicitement cette couronne afin que
+l'utilisateur puisse interpréter visuellement les zones accessibles et inaccessibles.
+
+\placeholder
+{Visualisation de l'espace de travail}
+{Insérer ici une capture du simulateur montrant le cercle externe, le cercle interne
+et la position du bras dans la zone accessible.}
+
+\section{Jacobienne}
+
+\subsection{Définition}
+
+La matrice jacobienne relie les vitesses articulaires aux vitesses cartésiennes :
+
+\begin{equation}
+    \begin{bmatrix}
+        \dot{x} \\
+        \dot{y}
+    \end{bmatrix}
+    =
+    J(\thone,\thtwo)
+    \begin{bmatrix}
+        \dot{\theta}_1 \\
+        \dot{\theta}_2
+    \end{bmatrix}.
+\end{equation}
+
+\subsection{Expression analytique}
+
+En dérivant les équations \eqref{eq:fkx} et \eqref{eq:fky}, on obtient :
+
+\begin{equation}
+    J(\thone,\thtwo) =
+    \begin{bmatrix}
+        -\Lone \sin(\thone) - \Ltwo \sin(\thone+\thtwo)
+        &
+        -\Ltwo \sin(\thone+\thtwo)
+        \\
+        \Lone \cos(\thone) + \Ltwo \cos(\thone+\thtwo)
+        &
+        \Ltwo \cos(\thone+\thtwo)
+    \end{bmatrix}.
+\end{equation}
+
+\subsection{Rôle dans le projet}
+
+Même si le projet n'utilise pas encore la jacobienne comme outil principal de commande,
+sa présence est importante pour trois raisons :
+
+\begin{itemize}
+    \item analyser les singularités ;
+    \item préparer une évolution vers une commande en vitesse ou en effort ;
+    \item fournir un socle théorique solide pour la suite de la thèse.
+\end{itemize}
+
+\section{Singularités}
+
+\subsection{Détection}
+
+Une singularité apparaît lorsque le déterminant de la jacobienne est nul :
+
+\begin{equation}
+    \det(J) = \Lone \Ltwo \sin(\thtwo) = 0.
+\end{equation}
+
+Donc les configurations singulières apparaissent lorsque :
+
+\begin{equation}
+    \thtwo = 0 \quad \text{ou} \quad \thtwo = \pi.
+\end{equation}
+
+\subsection{Signification physique}
+
+Ces cas correspondent à des configurations alignées, soit complètement déployées,
+soit complètement repliées. Dans ces situations, certaines directions de mouvement
+cartésien deviennent difficiles, voire impossibles, à produire localement.
+
+\subsection{Conséquence pratique}
+
+La prise en compte des singularités est importante pour la planification de trajectoire,
+car une trajectoire mathématiquement valide peut devenir défavorable en pratique si elle
+s'approche trop d'une zone où les vitesses articulaires devraient devenir très élevées.
+
+\chapter{Génération des mouvements et stratégie de commande}\label{chap:commande}
+
+\section{Commande d'un point cible}
+
+Le cas le plus simple consiste à atteindre un point cible $(x_c,y_c)$. La chaîne de
+traitement est alors :
+
+\begin{enumerate}[label=\arabic*.]
+    \item saisie ou sélection de la cible ;
+    \item calcul de la cinématique inverse ;
+    \item validation des limites ;
+    \item mise à jour des consignes articulaires ;
+    \item interpolation du mouvement pour l'animation ;
+    \item exécution simulée, matérielle ou hybride.
+\end{enumerate}
+
+\section{Trajectoire linéaire dans l'espace cartésien}
+
+Pour relier un point initial $(x_0,y_0)$ à un point final $(x_f,y_f)$, le projet
+met en oeuvre une interpolation cartésienne discrète :
+
+\begin{align}
+    x_i &= x_0 + \frac{i}{N-1}(x_f-x_0), \\
+    y_i &= y_0 + \frac{i}{N-1}(y_f-y_0),
+\end{align}
+
+où $N$ est le nombre de points discrétisés.
+
+Pour chaque point intermédiaire, la cinématique inverse est recalculée. Cette stratégie
+présente deux intérêts :
+
+\begin{itemize}
+    \item le chemin suivi dans le plan est conforme à l'intuition visuelle ;
+    \item la simulation devient plus démonstrative qu'un saut direct vers la position finale.
+\end{itemize}
+
+\section{Trajectoires de démonstration}
+
+Au-delà du déplacement vers un point, plusieurs trajectoires de démonstration ont été
+structurées dans le projet :
+
+\begin{itemize}
+    \item trajectoire linéaire ;
+    \item trajectoire carrée ;
+    \item trajectoire circulaire ;
+    \item trajectoire en zigzag.
+\end{itemize}
+
+Ces trajectoires servent un double objectif :
+
+\begin{itemize}
+    \item valider la robustesse du calcul cinématique sur plusieurs points successifs ;
+    \item fournir des résultats visuels convaincants pour une démonstration ou une soutenance.
+\end{itemize}
+
+\section{Interpolation articulaire pour l'animation}
+
+Pour qu'un mouvement soit observable et crédible, le projet n'effectue pas une simple
+mise à jour instantanée des angles. Une interpolation temporelle est introduite entre
+l'état initial et l'état final.
+
+Si $\theta_k^0$ et $\theta_k^f$ désignent les angles initial et final d'une articulation
+$k \in \{1,2\}$, alors l'évolution peut être écrite sous la forme :
+
+\begin{equation}
+    \theta_k(t) = \theta_k^0 + s(t)\left(\theta_k^f - \theta_k^0\right),
+\end{equation}
+
+où $s(t)$ est une fonction de lissage vérifiant $s(0)=0$ et $s(T)=1$.
+
+Dans l'implémentation actuelle, une loi de type cosinus est utilisée :
+
+\begin{equation}
+    s(\alpha) = \frac{1}{2} - \frac{1}{2}\cos(\pi \alpha),
+    \qquad \alpha \in [0,1].
+\end{equation}
+
+Cette écriture évite un déplacement visuellement brutal au démarrage et à l'arrivée.
+
+\section{Nature de la commande}
+
+Le projet relève d'une commande en position, principalement en boucle ouverte.
+Autrement dit, la consigne est calculée à partir du modèle, puis transmise au système
+de simulation ou au futur système matériel sans mesure continue de correction dans la
+boucle principale.
+
+Ce choix est adapté à une phase de prototypage académique, car il permet :
+
+\begin{itemize}
+    \item de valider la chaîne de calcul ;
+    \item d'identifier les erreurs de modélisation ;
+    \item de préparer une future extension vers une commande plus élaborée si nécessaire.
+\end{itemize}
+
+\chapter{Implémentation logicielle du projet}\label{chap:implementation}
+
+\section{Vue d'ensemble}
+
+Le dépôt est organisé en trois niveaux fonctionnels :
+
+\begin{enumerate}[label=\arabic*.]
+    \item simulation et modélisation ;
+    \item commande matérielle ;
+    \item intégration complète.
+\end{enumerate}
+
+\begin{lstlisting}[style=codestyle,caption={Organisation générale du projet}]
+phase1_simulation/
+    config.py
+    kinematics.py
+    simulator.py
+
+phase2_hardware/
+    grbl_interface.py
+    motor_control.py
+    a4988_config.py
+
+phase3_integration/
+    robot_controller.py
+    gui.py
+
+tests/
+    test_kinematics.py
+    test_robot_controller.py
+\end{lstlisting}
+
+\section{Phase 1 : configuration et modélisation}
+
+\subsection{Module \texttt{config.py}}
+
+Ce module centralise les paramètres géométriques, angulaires, moteurs et graphiques.
+Il sert de point unique de cohérence pour l'ensemble du projet. Cette approche évite
+la dispersion des constantes dans le code et facilite les recalibrages.
+
+\subsection{Module \texttt{kinematics.py}}
+
+Ce module implémente :
+
+\begin{itemize}
+    \item la cinématique directe ;
+    \item la cinématique inverse ;
+    \item la jacobienne ;
+    \item le calcul de la frontière de l'espace de travail ;
+    \item la génération de trajectoires linéaires ;
+    \item la génération de trajectoires polylignes et circulaires.
+\end{itemize}
+
+Il constitue donc le noyau mathématique du projet.
+
+\subsection{Module \texttt{simulator.py}}
+
+Le simulateur graphique en \texttt{Pygame} représente :
+
+\begin{itemize}
+    \item la base du robot ;
+    \item les deux segments ;
+    \item l'effecteur final ;
+    \item la cible ;
+    \item l'historique de trajectoire ;
+    \item l'\workspace{} sous forme de couronne.
+\end{itemize}
+
+L'évolution récente du projet a consisté à rendre cette simulation véritablement animée.
+Le bras n'est plus figé ni téléporté : les angles sont interpolés sur une durée finie,
+ce qui améliore la lisibilité et la valeur démonstrative du système.
+
+\placeholder
+{Simulation graphique du mouvement vers un point cible}
+{Insérer ici une capture montrant l'effecteur, la cible et l'historique du mouvement
+pendant une animation d'atteinte de point.}
+
+\section{Phase 2 : préparation matérielle}
+
+\subsection{Module \texttt{grbl\_interface.py}}
+
+Ce module encapsule la communication série avec GRBL. Il gère notamment :
+
+\begin{itemize}
+    \item l'ouverture et la fermeture du port série ;
+    \item l'envoi de commandes G-code ;
+    \item la lecture des réponses de type \texttt{ok} ou \texttt{error:N} ;
+    \item la lecture du statut de la carte ;
+    \item les commandes de homing, de reset et de déverrouillage.
+\end{itemize}
+
+\subsection{Module \texttt{motor\_control.py}}
+
+Ce module constitue une couche d'abstraction entre les angles articulaires et les
+commandes envoyées à GRBL. Son rôle est important, car il matérialise la transition
+entre le monde mathématique et le monde électromécanique.
+
+\subsection{Module \texttt{a4988\_config.py}}
+
+Ce module regroupe les éléments de configuration liés au driver A4988 :
+
+\begin{itemize}
+    \item modes de micro-pas ;
+    \item réglage du courant ;
+    \item rappels de câblage ;
+    \item paramètres utiles pour la préparation du prototype.
+\end{itemize}
+
+\section{Phase 3 : intégration complète}
+
+\subsection{Module \texttt{robot\_controller.py}}
+
+Le contrôleur principal fédère les trois modes du projet :
+
+\begin{itemize}
+    \item \textbf{simulation} : calcul et animation sans matériel ;
+    \item \textbf{hardware} : envoi des commandes vers GRBL ;
+    \item \textbf{hybrid} : animation et exécution matérielle simultanées.
+\end{itemize}
+
+Ce module gère également :
+
+\begin{itemize}
+    \item l'état courant du robot ;
+    \item l'historique des positions ;
+    \item les trajectoires planifiées ;
+    \item les rappels d'état destinés à l'interface graphique ;
+    \item l'animation temporelle des mouvements.
+\end{itemize}
+
+\subsection{Module \texttt{gui.py}}
+
+L'interface \texttt{Tkinter} permet de piloter le robot à un niveau plus démonstratif.
+Elle intègre :
+
+\begin{itemize}
+    \item un contrôle par angles ;
+    \item un contrôle par position cartésienne ;
+    \item une planification de trajectoire ;
+    \item des trajectoires prédéfinies ;
+    \item une console de messages ;
+    \item une vue temps réel du bras.
+\end{itemize}
+
+L'intérêt scientifique de cette interface est majeur : elle ne sert pas seulement
+à piloter, mais aussi à rendre visible la correspondance entre la théorie, le code
+et le comportement du robot.
+
+\placeholder
+{Interface graphique intégrée du projet}
+{Insérer ici une capture de l'interface complète, en particulier la vue temps réel
+du bras et les panneaux de commande.}
+
+\section{Flux de données}
+
+Le flux de données peut être résumé ainsi :
+
+\begin{enumerate}[label=\arabic*.]
+    \item l'utilisateur demande un mouvement ;
+    \item le contrôleur interprète la demande ;
+    \item la cinématique inverse calcule les angles requis ;
+    \item le contrôleur anime l'évolution articulaire ;
+    \item en mode matériel ou hybride, une couche convertit la consigne en dialogue GRBL ;
+    \item l'interface restitue l'état courant et la trajectoire.
+\end{enumerate}
+
+\section{Validation logicielle}
+
+Le projet contient des tests unitaires dédiés aux modules critiques, notamment :
+
+\begin{itemize}
+    \item tests de cinématique directe ;
+    \item tests de cinématique inverse ;
+    \item tests de cohérence angles/pas ;
+    \item tests sur la planification et l'exécution de trajectoires.
+\end{itemize}
+
+Ces tests jouent un rôle fondamental : ils garantissent que la démonstration visuelle
+repose sur un comportement mathématique vérifié, et non sur une simple animation.
+
+\chapter{Introduction à GRBL dans la phase prototype}\label{chap:grbl}
+
+\section{Pourquoi GRBL ?}
+
+GRBL est un micrologiciel libre largement utilisé pour piloter des moteurs pas à pas
+à partir de commandes G-code. Il est historiquement conçu pour les machines à commande
+numérique, mais son principe de fonctionnement est suffisamment générique pour être
+adapté à un bras robotique de petite taille, à condition de définir une couche
+d'interprétation appropriée.
+
+Dans ce projet, GRBL est envisagé comme une solution pragmatique pour le prototype,
+car il fournit déjà :
+
+\begin{itemize}
+    \item la communication série ;
+    \item la gestion des vitesses d'avance ;
+    \item la génération de pas ;
+    \item les mécanismes de homing et de sécurité ;
+    \item un protocole robuste et documenté.
+\end{itemize}
+
+\section{Principe d'intégration}
+
+L'idée n'est pas de faire croire à GRBL qu'il pilote directement un bras dans l'espace
+cartésien du plan, mais de l'utiliser comme couche de bas niveau pour produire les
+déplacements des moteurs correspondant aux angles articulaires.
+
+Le principe retenu est le suivant :
+
+\begin{enumerate}[label=\arabic*.]
+    \item le modèle cinématique calcule $(\thone,\thtwo)$ ;
+    \item ces angles sont convertis en nombres de pas moteurs ;
+    \item une relation de calibration convertit ces pas en positions compatibles avec les axes GRBL ;
+    \item GRBL reçoit alors une commande sur ses axes \texttt{X} et \texttt{Y}.
+\end{enumerate}
+
+\section{Conversion angles vers pas}
+
+Soit $N_1$ et $N_2$ les nombres de pas équivalents aux angles articulaires :
+
+\begin{align}
+    N_1 &= \thone \, S_1, \\
+    N_2 &= \thtwo \, S_2,
+\end{align}
+
+où :
+
+\begin{align}
+    S_1 &= \frac{N_{\text{rev}} \, \mu_1 \, g_1}{2\pi}, \\
+    S_2 &= \frac{N_{\text{rev}} \, \mu_2 \, g_2}{2\pi}.
+\end{align}
+
+Ici :
+
+\begin{itemize}
+    \item $N_{\text{rev}}$ est le nombre de pas par révolution du moteur ;
+    \item $\mu_i$ est le facteur de micro-pas ;
+    \item $g_i$ est le rapport de réduction mécanique éventuel.
+\end{itemize}
+
+Dans l'état logiciel actuel, cette conversion est déjà présente via
+\texttt{steps\_per\_rad\_1} et \texttt{steps\_per\_rad\_2}.
+
+\section{Abstraction vers les axes GRBL}
+
+Une couche de mapping associe :
+
+\begin{itemize}
+    \item l'axe \texttt{X} de GRBL à l'articulation 1 ;
+    \item l'axe \texttt{Y} de GRBL à l'articulation 2.
+\end{itemize}
+
+Dans une première version, on peut poser :
+
+\begin{align}
+    X_{\text{grbl}} &= k_s N_1, \\
+    Y_{\text{grbl}} &= k_s N_2,
+\end{align}
+
+où $k_s$ est un coefficient de calibration exprimé en millimètres GRBL par pas moteur.
+
+Il est important de noter que ce choix relève d'une abstraction d'intégration et non
+d'une vérité géométrique universelle. Lors du prototype physique, cette relation devra
+être calibrée expérimentalement afin que la consigne envoyée corresponde exactement au
+déplacement angulaire réel.
+
+\section{Exemples de commandes G-code}
+
+Une commande de déplacement absolu peut prendre la forme :
+
+\begin{lstlisting}[style=codestyle,caption={Exemple de commande G-code pour une consigne articulaire}]
+G90 G1 X12.500 Y8.200 F1000
+\end{lstlisting}
+
+où :
+
+\begin{itemize}
+    \item \texttt{G90} active le mode absolu ;
+    \item \texttt{G1} demande une interpolation linéaire ;
+    \item \texttt{X} et \texttt{Y} représentent ici les deux articulations abstraites ;
+    \item \texttt{F} impose la vitesse d'avance.
+\end{itemize}
+
+D'autres commandes importantes sont :
+
+\begin{lstlisting}[style=codestyle,caption={Commandes utiles pour la phase prototype}]
+$H      % homing
+$X      % unlock apres alarme
+?       % lecture du statut
+\end{lstlisting}
+
+\section{Rôle du homing}
+
+Sur le prototype, le homing sera indispensable pour référencer la machine. Sans cette
+opération, aucune cohérence durable entre la simulation et le robot réel ne peut être
+garantie.
+
+Le homing permettra :
+
+\begin{itemize}
+    \item de retrouver une origine articulaire connue ;
+    \item de limiter la dérive cumulative des positions ;
+    \item de sécuriser les essais ;
+    \item de comparer les expériences dans des conditions reproductibles.
+\end{itemize}
+
+\section{Paramètres GRBL à considérer}
+
+Les paramètres les plus sensibles dans la phase prototype seront :
+
+\begin{itemize}
+    \item les pas par millimètre abstrait des axes \texttt{\$100} et \texttt{\$101} ;
+    \item les vitesses maximales \texttt{\$110} et \texttt{\$111} ;
+    \item les accélérations \texttt{\$120} et \texttt{\$121} ;
+    \item l'activation du homing ;
+    \item les limites logicielles et matérielles.
+\end{itemize}
+
+\section{Protocole expérimental recommandé pour le prototype}
+
+Lorsque le prototype sera disponible, une séquence de validation progressive est
+recommandée :
+
+\begin{enumerate}[label=\arabic*.]
+    \item vérifier le câblage et le réglage des courants des A4988 ;
+    \item établir la communication série avec GRBL ;
+    \item effectuer un homing fiable ;
+    \item commander de faibles mouvements articulaires ;
+    \item mesurer la correspondance entre consigne et déplacement réel ;
+    \item calibrer les coefficients de conversion ;
+    \item tester l'atteinte d'un point ;
+    \item tester ensuite une trajectoire complète en mode hybride.
+\end{enumerate}
+
+\placeholder
+{Prototype physique et intégration GRBL}
+{Insérer ici une photographie du prototype, du câblage et éventuellement une capture
+de la console de communication GRBL.}
+
+\section{Limites actuelles et intérêt scientifique}
+
+À ce stade, l'intégration GRBL doit être comprise comme une passerelle vers le prototype.
+Le système démontre déjà la logique complète : calcul d'angles, animation, préparation
+des trajectoires, abstraction vers des commandes matérielles. Cette approche est
+scientifiquement pertinente, car elle isole clairement les niveaux de complexité :
+
+\begin{itemize}
+    \item la géométrie du problème ;
+    \item la logique de commande ;
+    \item l'exécution électromécanique.
+\end{itemize}
+
+\chapter{Analyse des résultats à présenter}\label{chap:resultats}
+
+\section{Résultats attendus en simulation}
+
+La validation visuelle doit montrer que :
+
+\begin{itemize}
+    \item le bras suit réellement la cible au lieu de rester figé ;
+    \item la trajectoire affichée correspond au chemin voulu ;
+    \item la distinction entre mode point, mode trajectoire et mode hybride est visible ;
+    \item l'historique de mouvement permet d'interpréter la cohérence de l'exécution.
+\end{itemize}
+
+\section{Captures d'écran recommandées}
+
+Pour documenter efficacement le travail, il sera utile d'insérer :
+
+\begin{enumerate}[label=\arabic*.]
+    \item une capture du simulateur au repos avec l'\workspace{} visible ;
+    \item une capture d'une atteinte de point ;
+    \item une capture d'une trajectoire carrée ou circulaire ;
+    \item une capture de l'interface graphique complète ;
+    \item une capture du mode hybride lors de l'échange avec GRBL ;
+    \item une photographie du prototype lorsqu'il sera disponible.
+\end{enumerate}
+
+\section{Lectures possibles des résultats}
+
+Dans l'analyse, il conviendra d'insister sur le fait que la simulation n'est pas une
+simple illustration décorative. Elle constitue un outil de validation scientifique,
+car elle permet de vérifier :
+
+\begin{itemize}
+    \item la cohérence des équations ;
+    \item l'impact des limites articulaires ;
+    \item la forme de l'\workspace{} ;
+    \item le comportement en voisinage de trajectoires plus complexes.
+\end{itemize}
+
+\chapter{Perspective d'extension vers un troisième degré de liberté}\label{chap:perspectives}
+
+\section{Motivation}
+
+L'ajout d'un troisième degré de liberté constitue la suite naturelle du projet. Un bras
+\ddof{} permet de positionner l'effecteur dans un plan, mais ne contrôle pas son
+orientation de manière indépendante. Or, dans un grand nombre d'applications robotiques,
+la position seule ne suffit pas : il faut également maîtriser l'orientation de l'outil.
+
+\section{Deux scénarios possibles}
+
+Deux évolutions sont particulièrement naturelles :
+
+\begin{itemize}
+    \item l'ajout d'une troisième articulation rotoïde pour contrôler l'orientation terminale ;
+    \item l'ajout d'un axe prismatic ou vertical si l'application exige une variation de hauteur.
+\end{itemize}
+
+Dans la continuité la plus directe du projet actuel, le scénario le plus cohérent est
+l'ajout d'une troisième articulation rotoïde, ce qui conduit à un bras plan de type $RRR$.
+
+\section{Extension du modèle cinématique}
+
+Avec une troisième articulation de longueur $\Lthree$ et d'angle $\ththree$, la position
+de l'effecteur devient :
+
+\begin{align}
+    x &= \Lone \cos(\thone)
+    + \Ltwo \cos(\thone+\thtwo)
+    + L_3 \cos(\thone+\thtwo+\ththree), \\
+    y &= \Lone \sin(\thone)
+    + \Ltwo \sin(\thone+\thtwo)
+    + L_3 \sin(\thone+\thtwo+\ththree).
+\end{align}
+
+Si l'on souhaite en plus imposer une orientation terminale $\phi$, on obtient :
+
+\begin{equation}
+    \phi = \thone + \thtwo + \ththree.
+\end{equation}
+
+Le problème n'est alors plus seulement de positionner l'effecteur, mais aussi de fixer
+son attitude finale.
+
+\section{Impact sur la cinématique inverse}
+
+Le passage au cas $RRR$ augmente nettement la richesse du problème :
+
+\begin{itemize}
+    \item il devient possible d'imposer simultanément position et orientation ;
+    \item le nombre de solutions peut augmenter ;
+    \item la gestion des limites articulaires devient plus délicate ;
+    \item la jacobienne devient une matrice $3 \times 3$ si l'orientation est intégrée dans les sorties.
+\end{itemize}
+
+\section{Impact sur l'architecture logicielle}
+
+L'ajout du troisième degré de liberté impliquera de faire évoluer :
+
+\begin{itemize}
+    \item \texttt{config.py} : ajout des paramètres de la troisième articulation ;
+    \item \texttt{kinematics.py} : nouvelles équations de cinématique directe, inverse et jacobienne ;
+    \item \texttt{simulator.py} : dessin d'un troisième segment ;
+    \item \texttt{robot\_controller.py} : animation et trajectoires à trois variables articulaires ;
+    \item \texttt{gui.py} : nouveaux contrôles et nouvelle lecture d'état ;
+    \item la couche GRBL : ajout d'un troisième axe abstrait, typiquement \texttt{Z} ou \texttt{A}.
+\end{itemize}
+
+\section{Impact sur le prototype}
+
+Sur le plan matériel, cette évolution demandera :
+
+\begin{itemize}
+    \item un moteur supplémentaire ;
+    \item un driver supplémentaire ;
+    \item une adaptation de la structure mécanique ;
+    \item une révision du câblage et de l'alimentation ;
+    \item une nouvelle phase de calibration.
+\end{itemize}
+
+\section{Intérêt scientifique de cette perspective}
+
+L'intérêt de cette extension est double :
+
+\begin{itemize}
+    \item elle transforme le projet en système plus proche d'un manipulateur utile pour la préhension ou l'orientation d'outil ;
+    \item elle ouvre la voie à des études plus avancées sur la redondance, les contraintes de trajectoire, la commande et l'optimisation.
+\end{itemize}
+
+Cette perspective donne au projet une continuité scientifique forte et justifie
+pleinement son inscription dans un travail de recherche.
+
+\chapter{Conclusion générale}
+
+Le projet présenté constitue une base cohérente et solide pour l'étude d'un bras
+robotique plan à deux degrés de liberté. Sa valeur ne réside pas seulement dans
+l'existence d'une interface ou d'une animation, mais dans l'alignement entre :
+
+\begin{itemize}
+    \item une théorie mathématique explicite ;
+    \item une implémentation logicielle modulaire ;
+    \item une stratégie de visualisation démonstrative ;
+    \item une préparation concrète à l'intégration sur prototype via GRBL.
+\end{itemize}
+
+Les résultats actuels montrent que le système est capable :
+
+\begin{itemize}
+    \item de calculer correctement les angles pour atteindre une cible ;
+    \item de représenter de manière animée les mouvements du bras ;
+    \item d'exécuter des trajectoires plus riches qu'un simple déplacement ponctuel ;
+    \item de préparer une future validation expérimentale cohérente.
+\end{itemize}
+
+L'étape suivante, à savoir la construction du prototype puis l'ajout d'un troisième
+degré de liberté, n'apparaît donc pas comme une rupture, mais comme la continuité
+logique d'une architecture déjà pensée pour évoluer.
+
+\appendix
+
+\chapter{Extrait de code représentatif}
+
+\begin{lstlisting}[style=pythonstyle,caption={Exemple simplifié de cinématique directe}]
+def forward_kinematics(theta1, theta2, L1, L2):
+    x = L1 * np.cos(theta1) + L2 * np.cos(theta1 + theta2)
+    y = L1 * np.sin(theta1) + L2 * np.sin(theta1 + theta2)
+    return x, y
+\end{lstlisting}
+
+\begin{lstlisting}[style=pythonstyle,caption={Exemple simplifié d'interpolation cartésienne}]
+def compute_trajectory(start_pos, end_pos, num_points):
+    x_traj = np.linspace(start_pos[0], end_pos[0], num_points)
+    y_traj = np.linspace(start_pos[1], end_pos[1], num_points)
+    return list(zip(x_traj, y_traj))
+\end{lstlisting}
+
+\chapter{Références bibliographiques}
+
+\begin{thebibliography}{9}
+
+\bibitem{spong}
+M. W. Spong, S. Hutchinson, and M. Vidyasagar,
+\textit{Robot Modeling and Control},
+Wiley, 2006.
+
+\bibitem{craig}
+J. J. Craig,
+\textit{Introduction to Robotics: Mechanics and Control},
+Pearson, 3rd edition, 2005.
+
+\bibitem{siciliano}
+B. Siciliano, L. Sciavicco, L. Villani, and G. Oriolo,
+\textit{Robotics: Modelling, Planning and Control},
+Springer, 2009.
+
+\bibitem{grbl}
+GRBL Project,
+\textit{GRBL Wiki},
+\url{https://github.com/gnea/grbl/wiki}.
+
+\bibitem{a4988}
+Pololu,
+\textit{A4988 Stepper Motor Driver Carrier Documentation},
+\url{https://www.pololu.com/product/1182}.
+
+\end{thebibliography}
+
+\end{document}

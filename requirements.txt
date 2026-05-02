@@ -1,0 +1,26 @@
+# Dépendances pour le projet Bras Robotique 2DDL
+
+# Calcul scientifique et mathématiques
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Visualisation et simulation
+matplotlib>=3.7.0
+pygame>=2.5.0
+
+# Communication série avec GRBL
+pyserial>=3.5
+
+# Interface graphique
+tkinter-tooltip>=2.1.0
+
+# Tests
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Documentation
+sphinx>=7.0.0
+sphinx-rtd-theme>=1.3.0
+
+# Utilitaires
+pyyaml>=6.0
