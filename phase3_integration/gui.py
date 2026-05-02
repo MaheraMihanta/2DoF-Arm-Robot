@@ -16,6 +16,9 @@ import numpy as np
 
 try:
     from ..phase1_simulation.config import RobotConfig
+    from ..phase1_simulation.gripper import Gripper
+    from ..phase1_simulation.objects import ObjectManager
+    from ..phase1_simulation.pick_place_scenarios import ColorSortingScenario, ScenarioState
     from .robot_controller import ControlMode, RobotController
 except ImportError:
     CURRENT_DIR = os.path.dirname(__file__)
@@ -23,6 +26,9 @@ except ImportError:
     sys.path.insert(0, CURRENT_DIR)
 
     from config import RobotConfig
+    from gripper import Gripper
+    from objects import ObjectManager
+    from pick_place_scenarios import ColorSortingScenario, ScenarioState
     from robot_controller import ControlMode, RobotController
 
 
@@ -60,6 +66,15 @@ class RobotGUI:
         self.zigzag_height_var = tk.DoubleVar(value=90.0)
         self.zigzag_passes_var = tk.IntVar(value=6)
 
+        # Variables pour Pick & Place
+        self.pp_num_cubes_var = tk.IntVar(value=6)
+        self.pp_scenario: Optional[ColorSortingScenario] = None
+        self.pp_gripper: Optional[Gripper] = None
+        self.pp_object_manager: Optional[ObjectManager] = None
+        self.pp_state_var = tk.StringVar(value="Non initialisé")
+        self.pp_score_var = tk.StringVar(value="Score: 0/0")
+        self.pp_progress_var = tk.StringVar(value="Progression: 0%")
+
         self.status_text_var = tk.StringVar(value="Non connecté")
         self.motion_text_var = tk.StringVar(value="Repos")
         self.live_mode_var = tk.StringVar(value="Mode: simulation")
@@ -96,16 +111,19 @@ class RobotGUI:
 
         control_frame = ttk.Frame(notebook)
         trajectory_frame = ttk.Frame(notebook)
+        pick_place_frame = ttk.Frame(notebook)
         config_frame = ttk.Frame(notebook)
         console_frame = ttk.Frame(notebook)
 
         notebook.add(control_frame, text="Contrôle")
         notebook.add(trajectory_frame, text="Trajectoires")
+        notebook.add(pick_place_frame, text="Pick & Place")
         notebook.add(config_frame, text="Configuration")
         notebook.add(console_frame, text="Console")
 
         self.create_control_tab(control_frame)
         self.create_trajectory_tab(trajectory_frame)
+        self.create_pick_place_tab(pick_place_frame)
         self.create_config_tab(config_frame)
         self.create_console_tab(console_frame)
         self.create_live_panel(right_panel)
@@ -281,6 +299,69 @@ class RobotGUI:
 
         self.trajectory_info = scrolledtext.ScrolledText(info_frame, height=18, width=74)
         self.trajectory_info.pack(fill=tk.BOTH, expand=True)
+
+    def create_pick_place_tab(self, parent):
+        """Crée l'onglet de démonstration Pick & Place."""
+        
+        # Frame de configuration
+        config_frame = ttk.LabelFrame(parent, text="Configuration du scénario", padding=10)
+        config_frame.pack(fill=tk.X, padx=6, pady=6)
+        
+        ttk.Label(config_frame, text="Nombre de cubes:").grid(row=0, column=0, sticky=tk.W)
+        ttk.Spinbox(config_frame, from_=2, to=12, textvariable=self.pp_num_cubes_var, width=10).grid(
+            row=0, column=1, padx=6
+        )
+        
+        ttk.Button(config_frame, text="Initialiser Scénario", command=self.pp_initialize_scenario).grid(
+            row=0, column=2, padx=6
+        )
+        
+        # Frame de contrôle
+        control_frame = ttk.LabelFrame(parent, text="Contrôle du tri", padding=10)
+        control_frame.pack(fill=tk.X, padx=6, pady=6)
+        
+        self.pp_start_btn = ttk.Button(
+            control_frame, text="Démarrer Tri Automatique",
+            command=self.pp_start_sorting, state=tk.DISABLED
+        )
+        self.pp_start_btn.grid(row=0, column=0, padx=6, pady=4)
+        
+        self.pp_pause_btn = ttk.Button(
+            control_frame, text="Pause",
+            command=self.pp_pause_sorting, state=tk.DISABLED
+        )
+        self.pp_pause_btn.grid(row=0, column=1, padx=6, pady=4)
+        
+        self.pp_reset_btn = ttk.Button(
+            control_frame, text="Réinitialiser",
+            command=self.pp_reset_scenario, state=tk.DISABLED
+        )
+        self.pp_reset_btn.grid(row=0, column=2, padx=6, pady=4)
+        
+        # Frame d'état
+        status_frame = ttk.LabelFrame(parent, text="État du scénario", padding=10)
+        status_frame.pack(fill=tk.X, padx=6, pady=6)
+        
+        ttk.Label(status_frame, textvariable=self.pp_state_var, font=("", 10, "bold")).pack(anchor=tk.W)
+        ttk.Label(status_frame, textvariable=self.pp_score_var).pack(anchor=tk.W, pady=2)
+        ttk.Label(status_frame, textvariable=self.pp_progress_var).pack(anchor=tk.W, pady=2)
+        
+        # Frame d'historique des actions
+        history_frame = ttk.LabelFrame(parent, text="Historique des actions", padding=10)
+        history_frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        
+        self.pp_history_text = scrolledtext.ScrolledText(history_frame, height=15, width=74)
+        self.pp_history_text.pack(fill=tk.BOTH, expand=True)
+        
+        # Frame de visualisation des objets
+        viz_frame = ttk.LabelFrame(parent, text="Visualisation des objets", padding=10)
+        viz_frame.pack(fill=tk.X, padx=6, pady=6)
+        
+        self.pp_viz_canvas = tk.Canvas(
+            viz_frame, width=680, height=120, bg="#f5f5f5",
+            highlightthickness=1, highlightbackground="#bcc5d4"
+        )
+        self.pp_viz_canvas.pack(fill=tk.X)
 
     def create_config_tab(self, parent):
         info = (
@@ -805,6 +886,273 @@ class RobotGUI:
 
     def log(self, message: str):
         print(message)
+    # ========== Méthodes Pick & Place ==========
+    
+    def pp_initialize_scenario(self):
+        """Initialise le scénario de tri par couleur."""
+        if not self.ensure_connected():
+            return
+        
+        try:
+            num_cubes = self.pp_num_cubes_var.get()
+            
+            # Créer les instances nécessaires
+            self.pp_gripper = Gripper(self.config)
+            self.pp_object_manager = ObjectManager(self.config)
+            self.pp_scenario = ColorSortingScenario(
+                self.config,
+                self.robot.kinematics,
+                self.pp_gripper,
+                self.pp_object_manager
+            )
+            
+            # Initialiser le scénario
+            self.pp_scenario.initialize(num_cubes=num_cubes)
+            
+            # Mettre à jour l'interface
+            self.pp_state_var.set(f"État: {self.pp_scenario.state.value}")
+            self.pp_update_display()
+            
+            # Activer les boutons
+            self.pp_start_btn.config(state=tk.NORMAL)
+            self.pp_reset_btn.config(state=tk.NORMAL)
+            
+            self.log(f"Scénario Pick & Place initialisé avec {num_cubes} cubes")
+            self.pp_log_action(f"Scénario initialisé avec {num_cubes} cubes")
+            
+        except Exception as exc:
+            messagebox.showerror("Erreur d'initialisation", str(exc))
+            self.log(f"Erreur d'initialisation Pick & Place: {exc}")
+    
+    def pp_start_sorting(self):
+        """Démarre ou reprend le tri automatique."""
+        if not self.pp_scenario:
+            messagebox.showwarning("Scénario non initialisé", "Veuillez d'abord initialiser le scénario")
+            return
+        
+        if self.pp_scenario.state == ScenarioState.IDLE:
+            self.pp_scenario.start()
+            self.pp_start_btn.config(text="Reprendre")
+            self.pp_pause_btn.config(state=tk.NORMAL)
+            self.log("Tri automatique démarré")
+            self.pp_log_action("Tri automatique démarré")
+            self.pp_execute_next_step()
+            
+        elif self.pp_scenario.state == ScenarioState.PAUSED:
+            self.pp_scenario.resume()
+            self.pp_start_btn.config(text="Reprendre")
+            self.pp_pause_btn.config(state=tk.NORMAL)
+            self.log("Tri automatique repris")
+            self.pp_log_action("Tri automatique repris")
+            self.pp_execute_next_step()
+    
+    def pp_pause_sorting(self):
+        """Met en pause le tri automatique."""
+        if self.pp_scenario and self.pp_scenario.state == ScenarioState.RUNNING:
+            self.pp_scenario.pause()
+            self.pp_state_var.set(f"État: {self.pp_scenario.state.value}")
+            self.pp_pause_btn.config(state=tk.DISABLED)
+            self.log("Tri automatique en pause")
+            self.pp_log_action("Tri automatique en pause")
+    
+    def pp_reset_scenario(self):
+        """Réinitialise le scénario."""
+        if self.pp_scenario:
+            self.pp_scenario.stop()
+            self.pp_scenario = None
+            self.pp_gripper = None
+            self.pp_object_manager = None
+            
+            self.pp_state_var.set("Non initialisé")
+            self.pp_score_var.set("Score: 0/0")
+            self.pp_progress_var.set("Progression: 0%")
+            
+            self.pp_start_btn.config(state=tk.DISABLED, text="Démarrer Tri Automatique")
+            self.pp_pause_btn.config(state=tk.DISABLED)
+            self.pp_reset_btn.config(state=tk.DISABLED)
+            
+            self.pp_history_text.delete(1.0, tk.END)
+            self.pp_viz_canvas.delete("all")
+            
+            self.log("Scénario Pick & Place réinitialisé")
+    
+    def pp_execute_next_step(self):
+        """Exécute la prochaine étape du tri."""
+        if not self.pp_scenario or self.pp_scenario.state != ScenarioState.RUNNING:
+            return
+        
+        try:
+            # Obtenir la position actuelle du robot
+            if self.robot:
+                x, y = self.robot.kinematics.forward_kinematics(
+                    self.robot.current_theta1,
+                    self.robot.current_theta2
+                )
+                current_pos = (x, y)
+            else:
+                current_pos = (0.0, 0.0)
+            
+            # Obtenir le prochain cube à trier
+            next_cube = self.pp_scenario.get_next_cube_to_sort(current_pos)
+            
+            if next_cube is None:
+                # Tri terminé
+                self.pp_scenario.state = ScenarioState.COMPLETED
+                self.pp_state_var.set(f"État: {self.pp_scenario.state.value}")
+                self.pp_start_btn.config(state=tk.DISABLED)
+                self.pp_pause_btn.config(state=tk.DISABLED)
+                
+                progress = self.pp_scenario.get_progress()
+                self.log(f"Tri terminé! Score: {progress['sorted_count']}/{progress['total_count']}")
+                self.pp_log_action(f"✓ Tri terminé! Score final: {progress['sorted_count']}/{progress['total_count']}")
+                messagebox.showinfo("Tri terminé",
+                    f"Tri terminé avec succès!\n\n"
+                    f"Score: {progress['sorted_count']}/{progress['total_count']}\n"
+                    f"Mouvements: {progress['total_moves']}\n"
+                    f"Temps: {progress['elapsed_time']:.1f}s")
+                return
+            
+            # Planifier la trajectoire pick & place
+            result = self.pp_scenario.plan_complete_sort_move(next_cube)
+            
+            if result is None:
+                self.log(f"Impossible de planifier le mouvement pour le cube {next_cube.color}")
+                self.pp_log_action(f"✗ Échec: cube {next_cube.color} inaccessible")
+                # Passer au cube suivant
+                self.root.after(500, self.pp_execute_next_step)
+                return
+            
+            trajectory, drop_zone = result
+            
+            # Exécuter la trajectoire
+            self.pp_log_action(f"→ Saisie du cube {next_cube.color} à ({next_cube.x:.0f}, {next_cube.y:.0f})")
+            
+            def execute_trajectory():
+                success = self.robot.execute_trajectory(
+                    trajectory,
+                    self.feed_rate_var.get(),
+                    trajectory_name=f"Pick & Place {next_cube.color}"
+                )
+                
+                if success:
+                    # Marquer le cube comme trié
+                    next_cube.set_position(drop_zone.x, drop_zone.y)
+                    
+                    # Les callbacks sont déjà appelés par le scénario
+                    # on_cube_picked() et on_cube_placed() ne prennent pas de paramètres
+                    self.pp_scenario.on_cube_placed()
+                    
+                    self.root.after(0, lambda: self.pp_log_action(
+                        f"✓ Cube {next_cube.color} déposé dans la zone {next_cube.color}"
+                    ))
+                    self.root.after(0, self.pp_update_display)
+                    
+                    # Continuer avec le prochain cube
+                    self.root.after(500, self.pp_execute_next_step)
+                else:
+                    self.root.after(0, lambda: self.pp_log_action(
+                        f"✗ Échec du placement du cube {next_cube.color}"
+                    ))
+                    self.root.after(500, self.pp_execute_next_step)
+            
+            threading.Thread(target=execute_trajectory, daemon=True).start()
+            
+        except Exception as exc:
+            self.log(f"Erreur lors de l'exécution: {exc}")
+            self.pp_log_action(f"✗ Erreur: {exc}")
+            messagebox.showerror("Erreur", str(exc))
+    
+    def pp_update_display(self):
+        """Met à jour l'affichage du scénario Pick & Place."""
+        if not self.pp_scenario:
+            return
+        
+        progress = self.pp_scenario.get_progress()
+        
+        self.pp_state_var.set(f"État: {self.pp_scenario.state.value}")
+        self.pp_score_var.set(
+            f"Score: {progress['sorted_count']}/{progress['total_count']} "
+            f"(Succès: {progress['successful_placements']}, Échecs: {progress['failed_attempts']})"
+        )
+        self.pp_progress_var.set(
+            f"Progression: {progress['progress_percent']:.0f}% - "
+            f"Mouvements: {progress['total_moves']} - "
+            f"Temps: {progress['elapsed_time']:.1f}s"
+        )
+        
+        # Dessiner la visualisation des objets
+        self.pp_draw_objects_visualization()
+    
+    def pp_draw_objects_visualization(self):
+        """Dessine une visualisation simplifiée des objets et zones."""
+        if not self.pp_object_manager:
+            return
+        
+        self.pp_viz_canvas.delete("all")
+        
+        # Définir les couleurs
+        color_map = {
+            'red': '#ef4444',
+            'blue': '#3b82f6',
+            'green': '#22c55e',
+            'yellow': '#eab308'
+        }
+        
+        # Dessiner les zones de dépôt
+        x_offset = 20
+        zone_width = 150
+        zone_height = 80
+        
+        for i, zone in enumerate(self.pp_object_manager.drop_zones):
+            x = x_offset + i * (zone_width + 10)
+            y = 20
+            
+            # Rectangle de la zone
+            self.pp_viz_canvas.create_rectangle(
+                x, y, x + zone_width, y + zone_height,
+                fill=color_map.get(zone.color, '#cccccc'),
+                outline='#333333', width=2
+            )
+            
+            # Nom de la zone
+            self.pp_viz_canvas.create_text(
+                x + zone_width // 2, y + 15,
+                text=f"Zone {zone.color}",
+                fill='white', font=('', 9, 'bold')
+            )
+            
+            # Compter les cubes dans cette zone
+            cubes_in_zone = [c for c in self.pp_object_manager.cubes
+                           if zone.is_correct_placement(c)]
+            
+            # Dessiner les cubes dans la zone
+            for j, cube in enumerate(cubes_in_zone):
+                cube_x = x + 20 + (j % 5) * 25
+                cube_y = y + 40 + (j // 5) * 25
+                self.pp_viz_canvas.create_rectangle(
+                    cube_x, cube_y, cube_x + 20, cube_y + 20,
+                    fill=color_map.get(cube.color, '#cccccc'),
+                    outline='#000000', width=1
+                )
+        
+        # Afficher le nombre de cubes restants
+        remaining = len([c for c in self.pp_object_manager.cubes
+                        if not any(zone.is_correct_placement(c)
+                                 for zone in self.pp_object_manager.drop_zones)])
+        
+        self.pp_viz_canvas.create_text(
+            340, 105,
+            text=f"Cubes restants à trier: {remaining}",
+            font=('', 10, 'bold')
+        )
+    
+    def pp_log_action(self, message: str):
+        """Ajoute un message dans l'historique des actions."""
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+        self.pp_history_text.insert(tk.END, f"[{timestamp}] {message}\n")
+        self.pp_history_text.see(tk.END)
+
 
     def on_close(self):
         self.disconnect()
