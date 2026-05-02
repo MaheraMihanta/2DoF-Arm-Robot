@@ -1,375 +1,375 @@
-# 🎯 Démonstration Hackathon - Bras Robotique 2DDL avec Pick & Place
+# 🎯 Hackathon Demonstration - 2-DOF Robotic Arm with Pick & Place
 
-## 📋 Informations Générales
+## 📋 General Information
 
-**Projet :** Extension Pick & Place pour Bras Robotique 2DDL  
-**Développeur :** Assisté par IBM Bob (IA)  
-**Durée de la démo :** 5 minutes  
-**Date :** 2 mai 2026  
-
----
-
-## 🎬 Script de Présentation (5 minutes)
-
-### Introduction (30 secondes)
-
-> "Bonjour ! Je vais vous présenter l'extension pick & place que j'ai développée pour un bras robotique 2DDL, avec l'assistance d'IBM Bob. Ce projet démontre comment une IA peut aider à comprendre, étendre et améliorer un projet robotique existant."
-
-**Points clés :**
-- Projet de base : bras robotique 2DDL fonctionnel
-- Extension : système de préhension et tri d'objets par couleur
-- Collaboration humain-IA pour accélérer le développement
+**Project:** Pick & Place Extension for 2-DOF Robotic Arm  
+**Developer:** Assisted by IBM Bob (AI)  
+**Demo Duration:** 5 minutes  
+**Date:** May 2, 2026  
 
 ---
 
-### Démonstration du Système (2 minutes)
+## 🎬 Presentation Script (5 minutes)
 
-#### 1. Lancement du Simulateur (20 secondes)
+### Introduction (30 seconds)
+
+> "Hello! I'm going to present the pick & place extension I developed for a 2-DOF robotic arm, with IBM Bob's assistance. This project demonstrates how AI can help understand, extend, and improve an existing robotics project."
+
+**Key Points:**
+- Base project: functional 2-DOF robotic arm
+- Extension: grasping system and color-based object sorting
+- Human-AI collaboration to accelerate development
+
+---
+
+### System Demonstration (2 minutes)
+
+#### 1. Launching the Simulator (20 seconds)
 
 ```bash
 python phase1_simulation/simulator.py
 ```
 
-**Narration :**
-> "Le simulateur affiche le bras robotique avec sa pince. Vous pouvez voir 4 cubes colorés dispersés dans l'espace de travail et 4 zones de dépôt correspondant aux couleurs."
+**Narration:**
+> "The simulator displays the robotic arm with its gripper. You can see 4 colored cubes scattered in the workspace and 4 drop zones corresponding to the colors."
 
-**Montrer :**
-- ✅ Bras robotique avec pince visible
-- ✅ Cubes colorés (rouge, bleu, vert, jaune)
-- ✅ Zones de dépôt semi-transparentes
-- ✅ Panneau d'information en bas à droite
+**Show:**
+- ✅ Robotic arm with visible gripper
+- ✅ Colored cubes (red, blue, green, yellow)
+- ✅ Semi-transparent drop zones
+- ✅ Information panel at bottom right
 
-#### 2. Contrôle Manuel de la Pince (20 secondes)
+#### 2. Manual Gripper Control (20 seconds)
 
-**Action :** Appuyer sur **O** plusieurs fois
+**Action:** Press **O** several times
 
-**Narration :**
-> "La pince peut s'ouvrir et se fermer. L'animation est fluide et la couleur change selon l'état : vert pour ouvert, rouge pour fermé, orange pendant le mouvement."
+**Narration:**
+> "The gripper can open and close. The animation is smooth and the color changes according to state: green for open, red for closed, orange during movement."
 
-**Montrer :**
-- ✅ Animation d'ouverture/fermeture (0.3s)
-- ✅ Changement de couleur des mâchoires
-- ✅ État affiché dans le panneau
+**Show:**
+- ✅ Opening/closing animation (0.3s)
+- ✅ Jaw color change
+- ✅ State displayed in panel
 
-#### 3. Tri Automatique (1 minute 20)
+#### 3. Automatic Sorting (1 minute 20)
 
-**Action :** Appuyer sur **P** pour démarrer le tri automatique
+**Action:** Press **P** to start automatic sorting
 
-**Narration :**
-> "Le système de tri automatique utilise un algorithme du plus proche. Le robot :
-> 1. Identifie le cube non trié le plus proche
-> 2. Planifie une trajectoire pick & place complète
-> 3. Descend, ferme la pince, saisit le cube
-> 4. Transporte le cube vers la zone correspondante
-> 5. Ouvre la pince et dépose le cube
-> 6. Répète jusqu'à ce que tous les cubes soient triés"
+**Narration:**
+> "The automatic sorting system uses a nearest-first algorithm. The robot:
+> 1. Identifies the nearest unsorted cube
+> 2. Plans a complete pick & place trajectory
+> 3. Descends, closes the gripper, grasps the cube
+> 4. Transports the cube to the corresponding zone
+> 5. Opens the gripper and deposits the cube
+> 6. Repeats until all cubes are sorted"
 
-**Montrer :**
-- ✅ Sélection automatique du cube le plus proche
-- ✅ Trajectoire fluide avec approche verticale
-- ✅ Fermeture de la pince pendant la descente
-- ✅ Cube qui suit la pince pendant le transport
-- ✅ Ouverture et dépôt dans la zone
-- ✅ Mise à jour du score en temps réel
-- ✅ Message "Tri terminé avec succès!"
+**Show:**
+- ✅ Automatic selection of nearest cube
+- ✅ Smooth trajectory with vertical approach
+- ✅ Gripper closing during descent
+- ✅ Cube following gripper during transport
+- ✅ Opening and deposit in zone
+- ✅ Real-time score update
+- ✅ "Sorting completed successfully!" message
 
-**Pendant la démo, mentionner :**
-- Validation de la cinématique inverse pour chaque point
-- Synchronisation précise pince-trajectoire
-- Gestion des positions inaccessibles
+**During demo, mention:**
+- Inverse kinematics validation for each point
+- Precise gripper-trajectory synchronization
+- Unreachable position handling
 
 ---
 
-### Architecture et Contribution d'IBM Bob (1 minute 30)
+### Architecture and IBM Bob's Contribution (1 minute 30)
 
-#### Architecture Modulaire
+#### Modular Architecture
 
-**Narration :**
-> "L'architecture est modulaire et extensible. IBM Bob m'a aidé à structurer le code en modules indépendants :"
+**Narration:**
+> "The architecture is modular and extensible. IBM Bob helped me structure the code into independent modules:"
 
-**Modules créés (montrer le code si possible) :**
+**Created Modules (show code if possible):**
 
-1. **`gripper.py`** (267 lignes)
-   - Gestion de la pince avec états et animations
-   - Détection de saisie avec tolérance configurable
+1. **`gripper.py`** (267 lines)
+   - Gripper management with states and animations
+   - Grasp detection with configurable tolerance
 
-2. **`objects.py`** (571 lignes)
-   - Cubes colorés manipulables
-   - Zones de dépôt avec validation
-   - Gestionnaire d'objets avec génération intelligente
+2. **`objects.py`** (571 lines)
+   - Manipulable colored cubes
+   - Drop zones with validation
+   - Object manager with intelligent generation
 
-3. **`pick_place_scenarios.py`** (418 lignes)
-   - Orchestration du tri automatique
-   - Stratégie du plus proche
-   - Métriques de performance
+3. **`pick_place_scenarios.py`** (418 lines)
+   - Automatic sorting orchestration
+   - Nearest-first strategy
+   - Performance metrics
 
-4. **`kinematics.py`** (modifié, +230 lignes)
-   - Trajectoires pick & place
-   - Validation d'atteignabilité
+4. **`kinematics.py`** (modified, +230 lines)
+   - Pick & place trajectories
+   - Reachability validation
 
-5. **`simulator.py`** (modifié, +180 lignes)
-   - Intégration visuelle
-   - Contrôles interactifs
+5. **`simulator.py`** (modified, +180 lines)
+   - Visual integration
+   - Interactive controls
 
-**Total :** ~2273 lignes de code ajoutées
+**Total:** ~2273 lines of code added
 
-#### Tests Unitaires
+#### Unit Tests
 
-**Narration :**
-> "IBM Bob a également généré des tests unitaires complets :"
+**Narration:**
+> "IBM Bob also generated comprehensive unit tests:"
 
 ```bash
 pytest tests/test_gripper.py tests/test_objects.py -v
 ```
 
-**Montrer :**
-- ✅ 42+ tests unitaires
-- ✅ Couverture ~85%
-- ✅ Tous les tests passent
+**Show:**
+- ✅ 42+ unit tests
+- ✅ ~85% coverage
+- ✅ All tests pass
 
 ---
 
-### Valeur Ajoutée d'IBM Bob (1 minute)
+### IBM Bob's Added Value (1 minute)
 
-#### 1. Compréhension du Contexte ✅
+#### 1. Context Understanding ✅
 
-**Narration :**
-> "IBM Bob a analysé l'architecture existante et proposé une extension cohérente sans refonte majeure."
+**Narration:**
+> "IBM Bob analyzed the existing architecture and proposed a coherent extension without major refactoring."
 
-**Exemples concrets :**
-- Réutilisation de `RobotConfig` pour les nouveaux paramètres
-- Extension de `Kinematics` avec de nouvelles méthodes
-- Respect des conventions de nommage existantes
+**Concrete Examples:**
+- Reuse of `RobotConfig` for new parameters
+- Extension of `Kinematics` with new methods
+- Respect for existing naming conventions
 
-#### 2. Proposition Pertinente ✅
+#### 2. Relevant Proposal ✅
 
-**Narration :**
-> "Bob a suggéré un scénario de tri par couleur, visuellement démonstrable et techniquement intéressant."
+**Narration:**
+> "Bob suggested a color sorting scenario, visually demonstrable and technically interesting."
 
-**Avantages :**
-- Démonstration rapide (< 2 minutes)
-- Compréhensible par tous
-- Complexité technique appropriée
+**Advantages:**
+- Quick demonstration (< 2 minutes)
+- Understandable by everyone
+- Appropriate technical complexity
 
-#### 3. Implémentation Structurée ✅
+#### 3. Structured Implementation ✅
 
-**Narration :**
-> "Le développement s'est fait en sprints itératifs avec validation à chaque étape."
+**Narration:**
+> "Development was done in iterative sprints with validation at each step."
 
-**Méthodologie :**
-- Sprint 1 : Fondations (gripper, objects)
-- Sprint 2 : Trajectoires et scénarios
-- Sprint 3 : Intégration simulation
-- Sprint 4 : Documentation (en cours)
+**Methodology:**
+- Sprint 1: Foundations (gripper, objects)
+- Sprint 2: Trajectories and scenarios
+- Sprint 3: Simulation integration
+- Sprint 4: Documentation (in progress)
 
-#### 4. Résolution de Problèmes ✅
+#### 4. Problem Solving ✅
 
-**Narration :**
-> "Lors des tests, Bob a identifié et corrigé plusieurs anomalies :"
+**Narration:**
+> "During testing, Bob identified and fixed several issues:"
 
-**Problèmes résolus :**
-- Affichage encombré → Panneau compact repositionné
-- Cubes non déplacés → Synchronisation en temps réel
-- Tri incomplet → Logique de continuation corrigée
-- Positions inaccessibles → Génération intelligente
+**Problems Solved:**
+- Cluttered display → Compact panel repositioned
+- Cubes not moving → Real-time synchronization
+- Incomplete sorting → Continuation logic fixed
+- Unreachable positions → Intelligent generation
 
 ---
 
-### Conclusion et Questions (30 secondes)
+### Conclusion and Questions (30 seconds)
 
-**Narration :**
-> "En résumé, IBM Bob a permis de :
-> - Développer 2273 lignes de code en ~4 heures
-> - Créer une architecture modulaire et testée
-> - Résoudre rapidement les problèmes rencontrés
-> - Produire une documentation complète
+**Narration:**
+> "In summary, IBM Bob enabled:
+> - Development of 2273 lines of code in ~4 hours
+> - Creation of modular and tested architecture
+> - Quick resolution of encountered problems
+> - Production of complete documentation
 > 
-> Le système est maintenant prêt pour une extension vers le matériel réel avec GRBL et moteurs pas à pas."
+> The system is now ready for extension to real hardware with GRBL and stepper motors."
 
-**Ouvrir aux questions :**
-- Questions techniques sur l'implémentation
-- Questions sur la collaboration avec IBM Bob
-- Questions sur les extensions futures
-
----
-
-## 🎯 Points Clés à Retenir
-
-### Pour le Jury
-
-1. **Innovation** : Extension pick & place complète d'un projet existant
-2. **Qualité** : Code modulaire, testé, documenté
-3. **Collaboration IA** : Utilisation efficace d'IBM Bob
-4. **Résultats** : Système fonctionnel et démontrable
-
-### Différenciateurs
-
-- ✅ Architecture extensible (facile d'ajouter de nouvelles fonctionnalités)
-- ✅ Tests unitaires complets (42+ tests)
-- ✅ Documentation technique détaillée
-- ✅ Gestion robuste des erreurs
-- ✅ Génération intelligente de positions atteignables
+**Open to questions:**
+- Technical questions about implementation
+- Questions about collaboration with IBM Bob
+- Questions about future extensions
 
 ---
 
-## ❓ Questions Fréquentes et Réponses
+## 🎯 Key Takeaways
 
-### Q1 : Combien de temps a pris le développement ?
+### For the Jury
 
-**R :** Environ 4 heures réparties sur 4 sprints :
-- Sprint 1 : 1h (fondations)
-- Sprint 2 : 1h (trajectoires)
-- Sprint 3 : 2h (intégration + corrections)
-- Sprint 4 : En cours (documentation)
+1. **Innovation**: Complete pick & place extension of existing project
+2. **Quality**: Modular, tested, documented code
+3. **AI Collaboration**: Effective use of IBM Bob
+4. **Results**: Functional and demonstrable system
 
-### Q2 : Quelle a été la contribution exacte d'IBM Bob ?
+### Differentiators
 
-**R :** IBM Bob a :
-- Analysé l'architecture existante
-- Proposé une extension cohérente
-- Généré le code des nouveaux modules
-- Créé les tests unitaires
-- Identifié et corrigé les bugs
-- Rédigé la documentation
+- ✅ Extensible architecture (easy to add new features)
+- ✅ Comprehensive unit tests (42+ tests)
+- ✅ Detailed technical documentation
+- ✅ Robust error handling
+- ✅ Intelligent generation of reachable positions
 
-**Ma contribution :**
-- Définition des objectifs
-- Validation des propositions
-- Tests et retours
-- Ajustements finaux
+---
 
-### Q3 : Le système fonctionne-t-il avec du matériel réel ?
+## ❓ Frequently Asked Questions and Answers
 
-**R :** Actuellement en simulation. L'architecture est prête pour le matériel :
-- Interface GRBL déjà présente (`phase2_hardware/`)
-- Conversion angles → pas moteur implémentée
-- Paramètres A4988 configurables
-- Mode hybrid simulation/hardware disponible
+### Q1: How long did development take?
 
-### Q4 : Quelles sont les limites actuelles ?
+**A:** About 4 hours spread over 4 sprints:
+- Sprint 1: 1h (foundations)
+- Sprint 2: 1h (trajectories)
+- Sprint 3: 2h (integration + fixes)
+- Sprint 4: In progress (documentation)
 
-**R :**
-- Pas de détection de collision entre cubes
-- Physique simplifiée (pas de gravité/friction)
-- Trajectoires linéaires (pas de splines)
-- Ordre de tri non optimisé (algorithme du plus proche)
+### Q2: What was IBM Bob's exact contribution?
 
-### Q5 : Quelles améliorations futures sont prévues ?
+**A:** IBM Bob:
+- Analyzed existing architecture
+- Proposed coherent extension
+- Generated code for new modules
+- Created unit tests
+- Identified and fixed bugs
+- Wrote documentation
 
-**R :**
-- Algorithme TSP pour optimiser l'ordre de tri
-- Interpolation spline pour trajectoires plus fluides
-- Détection de collision entre objets
-- Physique réaliste avec gravité
-- Support d'objets de formes variées
-- Interface GUI avec Tkinter (optionnel)
+**My contribution:**
+- Goal definition
+- Proposal validation
+- Testing and feedback
+- Final adjustments
 
-### Q6 : Comment tester le projet ?
+### Q3: Does the system work with real hardware?
 
-**R :**
+**A:** Currently in simulation. Architecture is ready for hardware:
+- GRBL interface already present (`phase2_hardware/`)
+- Angle → motor step conversion implemented
+- A4988 parameters configurable
+- Hybrid simulation/hardware mode available
+
+### Q4: What are the current limitations?
+
+**A:**
+- No collision detection between cubes
+- Simplified physics (no gravity/friction)
+- Linear trajectories (no splines)
+- Non-optimized sorting order (nearest-first algorithm)
+
+### Q5: What future improvements are planned?
+
+**A:**
+- TSP algorithm to optimize sorting order
+- Spline interpolation for smoother trajectories
+- Collision detection between objects
+- Realistic physics with gravity
+- Support for varied object shapes
+- GUI interface with Tkinter (optional)
+
+### Q6: How to test the project?
+
+**A:**
 ```bash
-# Cloner le dépôt
-git clone [URL_DU_DEPOT]
+# Clone repository
+git clone [REPO_URL]
 
-# Installer les dépendances
+# Install dependencies
 pip install -r requirements.txt
 
-# Lancer le simulateur
+# Launch simulator
 python phase1_simulation/simulator.py
 
-# Lancer les tests
+# Run tests
 pytest tests/ -v
 ```
 
-### Q7 : Le code est-il réutilisable ?
+### Q7: Is the code reusable?
 
-**R :** Oui, totalement ! L'architecture modulaire permet :
-- Réutilisation des modules individuellement
-- Extension facile avec de nouveaux scénarios
-- Intégration dans d'autres projets robotiques
-- Adaptation à différentes configurations de bras
+**A:** Yes, completely! The modular architecture allows:
+- Reuse of modules individually
+- Easy extension with new scenarios
+- Integration into other robotics projects
+- Adaptation to different arm configurations
 
 ---
 
-## 📊 Métriques du Projet
+## 📊 Project Metrics
 
 ### Code
 
-- **Lignes ajoutées :** ~2273
-- **Nouveaux fichiers :** 5
-- **Fichiers modifiés :** 3
-- **Tests unitaires :** 42+
-- **Couverture :** ~85%
+- **Lines added:** ~2273
+- **New files:** 5
+- **Modified files:** 3
+- **Unit tests:** 42+
+- **Coverage:** ~85%
 
 ### Performance
 
-- **Taux de réussite du tri :** 100% (positions atteignables)
-- **Temps moyen par cube :** ~8 secondes
-- **Précision de placement :** ±2 mm
-- **Fluidité :** 60 FPS
+- **Sorting success rate:** 100% (reachable positions)
+- **Average time per cube:** ~8 seconds
+- **Placement accuracy:** ±2 mm
+- **Fluidity:** 60 FPS
 
 ### Documentation
 
-- **Guides techniques :** 3
-- **Documentation API :** Complète
-- **Exemples de code :** Multiples
-- **Diagrammes :** Architecture et flux
+- **Technical guides:** 3
+- **API documentation:** Complete
+- **Code examples:** Multiple
+- **Diagrams:** Architecture and flow
 
 ---
 
-## 🎥 Checklist Avant la Démo
+## 🎥 Pre-Demo Checklist
 
-### Préparation Technique
+### Technical Preparation
 
-- [ ] Ordinateur chargé
-- [ ] Python et dépendances installés
-- [ ] Projet cloné et testé
-- [ ] Simulateur lance sans erreur
-- [ ] Tests unitaires passent
+- [ ] Computer charged
+- [ ] Python and dependencies installed
+- [ ] Project cloned and tested
+- [ ] Simulator launches without error
+- [ ] Unit tests pass
 
-### Préparation Matérielle
+### Hardware Preparation
 
-- [ ] Écran de présentation fonctionnel
-- [ ] Souris/clavier disponibles
-- [ ] Connexion internet (si nécessaire)
-- [ ] Plan B : vidéo de démonstration
+- [ ] Presentation screen functional
+- [ ] Mouse/keyboard available
+- [ ] Internet connection (if needed)
+- [ ] Plan B: demo video
 
-### Préparation Personnelle
+### Personal Preparation
 
-- [ ] Script répété
-- [ ] Timing vérifié (< 5 minutes)
-- [ ] Réponses aux questions préparées
-- [ ] Enthousiasme et confiance ! 🚀
-
----
-
-## 🏆 Objectifs de la Démonstration
-
-### Objectifs Principaux
-
-1. ✅ Montrer un système pick & place fonctionnel
-2. ✅ Démontrer la valeur d'IBM Bob
-3. ✅ Prouver la qualité du code (tests, doc)
-4. ✅ Inspirer le jury avec les possibilités
-
-### Objectifs Secondaires
-
-1. Obtenir des retours constructifs
-2. Identifier des opportunités de collaboration
-3. Partager l'expérience de développement avec IA
-4. Promouvoir l'approche modulaire et testée
+- [ ] Script rehearsed
+- [ ] Timing verified (< 5 minutes)
+- [ ] Question answers prepared
+- [ ] Enthusiasm and confidence! 🚀
 
 ---
 
-## 📞 Contact et Ressources
+## 🏆 Demonstration Objectives
 
-**Dépôt GitHub :** [URL_DU_DEPOT]  
-**Documentation :** `docs/`  
-**Guide de démarrage :** `QUICKSTART.md`  
-**Rapport technique :** `docs/rapport_bras_robotique_2ddl.tex`
+### Main Objectives
+
+1. ✅ Show functional pick & place system
+2. ✅ Demonstrate IBM Bob's value
+3. ✅ Prove code quality (tests, docs)
+4. ✅ Inspire jury with possibilities
+
+### Secondary Objectives
+
+1. Get constructive feedback
+2. Identify collaboration opportunities
+3. Share AI development experience
+4. Promote modular and tested approach
 
 ---
 
-**Bonne chance pour la démonstration ! 🎉**
+## 📞 Contact and Resources
 
-*Document préparé par IBM Bob - 2 mai 2026*
+**GitHub Repository:** [REPO_URL]  
+**Documentation:** `docs/`  
+**Quick Start Guide:** `QUICKSTART.md`  
+**Technical Report:** `docs/rapport_bras_robotique_2ddl.tex`
+
+---
+
+**Good luck with the demonstration! 🎉**
+
+*Document prepared by IBM Bob - May 2, 2026*

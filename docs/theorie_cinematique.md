@@ -1,44 +1,44 @@
-# Théorie de la Cinématique - Bras Robotique 2DDL
+# Kinematics Theory - 2-DOF Robotic Arm
 
-## Table des Matières
+## Table of Contents
 
 1. [Introduction](#introduction)
-2. [Modèle Géométrique](#modèle-géométrique)
-3. [Cinématique Directe](#cinématique-directe)
-4. [Cinématique Inverse](#cinématique-inverse)
-5. [Jacobienne](#jacobienne)
-6. [Espace de Travail](#espace-de-travail)
-7. [Singularités](#singularités)
+2. [Geometric Model](#geometric-model)
+3. [Forward Kinematics](#forward-kinematics)
+4. [Inverse Kinematics](#inverse-kinematics)
+5. [Jacobian](#jacobian)
+6. [Workspace](#workspace)
+7. [Singularities](#singularities)
 
 ---
 
 ## Introduction
 
-Un bras robotique à 2 degrés de liberté (2DDL) est composé de deux segments rigides reliés par des articulations rotatives. Ce document présente la théorie mathématique nécessaire pour contrôler ce type de robot.
+A 2 degrees of freedom (2-DOF) robotic arm consists of two rigid segments connected by rotary joints. This document presents the mathematical theory necessary to control this type of robot.
 
 ### Notation
 
-- **L₁** : Longueur du premier segment (bras)
-- **L₂** : Longueur du deuxième segment (avant-bras)
-- **θ₁** : Angle de la première articulation (base)
-- **θ₂** : Angle de la deuxième articulation (coude)
-- **(x, y)** : Position cartésienne de l'effecteur final
+- **L₁**: Length of first segment (arm)
+- **L₂**: Length of second segment (forearm)
+- **θ₁**: Angle of first joint (base)
+- **θ₂**: Angle of second joint (elbow)
+- **(x, y)**: Cartesian position of end effector
 
 ---
 
-## Modèle Géométrique
+## Geometric Model
 
-### Schéma du Robot
+### Robot Diagram
 
 ```
-                    Effecteur (x, y)
+                    End Effector (x, y)
                          ●
                         /
                        /
                       / L₂
                      /
                     / θ₂
-                   ●────────── Articulation 2
+                   ●────────── Joint 2
                   /
                  /
                 / L₁
@@ -47,53 +47,53 @@ Un bras robotique à 2 degrés de liberté (2DDL) est composé de deux segments 
              ●────────────────── Base (0, 0)
 ```
 
-### Système de Coordonnées
+### Coordinate System
 
-- **Origine** : Base du robot (articulation 1)
-- **Axe X** : Horizontal, vers la droite
-- **Axe Y** : Vertical, vers le haut
-- **Angles** : Mesurés dans le sens trigonométrique (anti-horaire)
+- **Origin**: Robot base (joint 1)
+- **X-axis**: Horizontal, to the right
+- **Y-axis**: Vertical, upward
+- **Angles**: Measured counterclockwise (trigonometric)
 
 ---
 
-## Cinématique Directe
+## Forward Kinematics
 
-### Problème
+### Problem
 
-Étant donnés les angles articulaires θ₁ et θ₂, calculer la position cartésienne (x, y) de l'effecteur final.
+Given joint angles θ₁ and θ₂, calculate the Cartesian position (x, y) of the end effector.
 
 ### Solution
 
-La position de l'effecteur final est obtenue par composition des transformations:
+The end effector position is obtained by composition of transformations:
 
 ```
 x = L₁·cos(θ₁) + L₂·cos(θ₁ + θ₂)
 y = L₁·sin(θ₁) + L₂·sin(θ₁ + θ₂)
 ```
 
-### Démonstration
+### Derivation
 
-1. **Position de l'articulation 2** (extrémité du segment 1):
+1. **Position of joint 2** (end of segment 1):
    ```
    x₁ = L₁·cos(θ₁)
    y₁ = L₁·sin(θ₁)
    ```
 
-2. **Position de l'effecteur** (extrémité du segment 2):
-   - L'angle absolu du segment 2 est θ₁ + θ₂
-   - Le vecteur du segment 2 est:
+2. **Position of end effector** (end of segment 2):
+   - Absolute angle of segment 2 is θ₁ + θ₂
+   - Vector of segment 2 is:
      ```
      Δx = L₂·cos(θ₁ + θ₂)
      Δy = L₂·sin(θ₁ + θ₂)
      ```
    
-3. **Position finale**:
+3. **Final position**:
    ```
    x = x₁ + Δx = L₁·cos(θ₁) + L₂·cos(θ₁ + θ₂)
    y = y₁ + Δy = L₁·sin(θ₁) + L₂·sin(θ₁ + θ₂)
    ```
 
-### Implémentation Python
+### Python Implementation
 
 ```python
 def forward_kinematics(theta1, theta2, L1, L2):
@@ -104,17 +104,17 @@ def forward_kinematics(theta1, theta2, L1, L2):
 
 ---
 
-## Cinématique Inverse
+## Inverse Kinematics
 
-### Problème
+### Problem
 
-Étant donnée une position cartésienne (x, y), calculer les angles articulaires θ₁ et θ₂ nécessaires pour atteindre cette position.
+Given a Cartesian position (x, y), calculate the joint angles θ₁ and θ₂ needed to reach this position.
 
-### Solution Géométrique
+### Geometric Solution
 
-#### Étape 1: Calcul de θ₂
+#### Step 1: Calculate θ₂
 
-Utilisation de la **loi des cosinus**:
+Using the **law of cosines**:
 
 ```
 r² = x² + y²
@@ -123,49 +123,49 @@ r² = L₁² + L₂² + 2·L₁·L₂·cos(θ₂)
 cos(θ₂) = (r² - L₁² - L₂²) / (2·L₁·L₂)
 ```
 
-Donc:
+Therefore:
 ```
 θ₂ = ±arccos((r² - L₁² - L₂²) / (2·L₁·L₂))
 ```
 
-**Deux solutions possibles:**
-- θ₂ > 0 : Configuration "coude vers le haut"
-- θ₂ < 0 : Configuration "coude vers le bas"
+**Two possible solutions:**
+- θ₂ > 0: "Elbow up" configuration
+- θ₂ < 0: "Elbow down" configuration
 
-#### Étape 2: Calcul de θ₁
+#### Step 2: Calculate θ₁
 
-Décomposition géométrique:
+Geometric decomposition:
 
 ```
 θ₁ = atan2(y, x) - atan2(L₂·sin(θ₂), L₁ + L₂·cos(θ₂))
 ```
 
-Où:
-- `atan2(y, x)` : Angle de la ligne base-cible
-- `atan2(L₂·sin(θ₂), L₁ + L₂·cos(θ₂))` : Angle de correction
+Where:
+- `atan2(y, x)`: Angle of base-target line
+- `atan2(L₂·sin(θ₂), L₁ + L₂·cos(θ₂))`: Correction angle
 
-### Conditions d'Existence
+### Existence Conditions
 
-La position (x, y) est atteignable si et seulement si:
+Position (x, y) is reachable if and only if:
 
 ```
 |L₁ - L₂| ≤ r ≤ L₁ + L₂
 ```
 
-Où r = √(x² + y²) est la distance de la base à la cible.
+Where r = √(x² + y²) is the distance from base to target.
 
-### Implémentation Python
+### Python Implementation
 
 ```python
 def inverse_kinematics(x, y, L1, L2, elbow_up=True):
-    # Distance à la cible
+    # Distance to target
     r = np.sqrt(x**2 + y**2)
     
-    # Vérifier l'atteignabilité
+    # Check reachability
     if r > (L1 + L2) or r < abs(L1 - L2):
-        return None  # Position non atteignable
+        return None  # Position unreachable
     
-    # Calcul de θ₂
+    # Calculate θ₂
     cos_theta2 = (r**2 - L1**2 - L2**2) / (2 * L1 * L2)
     
     if abs(cos_theta2) > 1.0:
@@ -176,7 +176,7 @@ def inverse_kinematics(x, y, L1, L2, elbow_up=True):
     else:
         theta2 = -np.arccos(cos_theta2)
     
-    # Calcul de θ₁
+    # Calculate θ₁
     k1 = L1 + L2 * np.cos(theta2)
     k2 = L2 * np.sin(theta2)
     theta1 = np.arctan2(y, x) - np.arctan2(k2, k1)
@@ -184,24 +184,24 @@ def inverse_kinematics(x, y, L1, L2, elbow_up=True):
     return theta1, theta2
 ```
 
-### Exemple Numérique
+### Numerical Example
 
-**Données:**
+**Data:**
 - L₁ = 200 mm
 - L₂ = 150 mm
-- Cible: (250, 150) mm
+- Target: (250, 150) mm
 
-**Calcul:**
+**Calculation:**
 
 1. Distance: r = √(250² + 150²) = 291.55 mm
-2. Vérification: 50 ≤ 291.55 ≤ 350 ✓
+2. Verification: 50 ≤ 291.55 ≤ 350 ✓
 3. cos(θ₂) = (291.55² - 200² - 150²) / (2·200·150) = 0.4518
-4. θ₂ = arccos(0.4518) = 63.2° (coude haut)
+4. θ₂ = arccos(0.4518) = 63.2° (elbow up)
 5. k₁ = 200 + 150·cos(63.2°) = 267.77
 6. k₂ = 150·sin(63.2°) = 133.83
 7. θ₁ = atan2(150, 250) - atan2(133.83, 267.77) = 30.96° - 26.57° = 4.39°
 
-**Vérification:**
+**Verification:**
 ```
 x = 200·cos(4.39°) + 150·cos(4.39° + 63.2°) = 250.0 ✓
 y = 200·sin(4.39°) + 150·sin(4.39° + 63.2°) = 150.0 ✓
@@ -209,48 +209,48 @@ y = 200·sin(4.39°) + 150·sin(4.39° + 63.2°) = 150.0 ✓
 
 ---
 
-## Jacobienne
+## Jacobian
 
-### Définition
+### Definition
 
-La matrice jacobienne J relie les vitesses articulaires aux vitesses cartésiennes:
+The Jacobian matrix J relates joint velocities to Cartesian velocities:
 
 ```
 [ẋ]   [J₁₁  J₁₂] [θ̇₁]
 [ẏ] = [J₂₁  J₂₂] [θ̇₂]
 ```
 
-### Calcul
+### Calculation
 
-Dérivation de la cinématique directe:
+Derivation of forward kinematics:
 
 ```
 ẋ = ∂x/∂θ₁·θ̇₁ + ∂x/∂θ₂·θ̇₂
 ẏ = ∂y/∂θ₁·θ̇₁ + ∂y/∂θ₂·θ̇₂
 ```
 
-**Résultat:**
+**Result:**
 
 ```
 J = [[-L₁·sin(θ₁) - L₂·sin(θ₁+θ₂),  -L₂·sin(θ₁+θ₂)]
      [ L₁·cos(θ₁) + L₂·cos(θ₁+θ₂),   L₂·cos(θ₁+θ₂)]]
 ```
 
-### Utilisation
+### Usage
 
-1. **Vitesses cartésiennes → vitesses articulaires:**
+1. **Cartesian velocities → joint velocities:**
    ```
    [θ̇₁]       [ẋ]
    [θ̇₂] = J⁻¹ [ẏ]
    ```
 
-2. **Forces cartésiennes → couples articulaires:**
+2. **Cartesian forces → joint torques:**
    ```
    [τ₁]      [Fₓ]
    [τ₂] = Jᵀ [Fᵧ]
    ```
 
-### Implémentation Python
+### Python Implementation
 
 ```python
 def jacobian(theta1, theta2, L1, L2):
@@ -269,104 +269,104 @@ def jacobian(theta1, theta2, L1, L2):
 
 ---
 
-## Espace de Travail
+## Workspace
 
-### Définition
+### Definition
 
-L'espace de travail est l'ensemble de toutes les positions (x, y) atteignables par l'effecteur final.
+The workspace is the set of all positions (x, y) reachable by the end effector.
 
-### Forme Géométrique
+### Geometric Shape
 
-Pour un robot 2DDL plan, l'espace de travail est une **couronne circulaire**:
+For a planar 2-DOF robot, the workspace is an **annular region**:
 
 ```
-Rayon extérieur: R_max = L₁ + L₂
-Rayon intérieur: R_min = |L₁ - L₂|
+Outer radius: R_max = L₁ + L₂
+Inner radius: R_min = |L₁ - L₂|
 ```
 
-### Cas Particuliers
+### Special Cases
 
 1. **L₁ = L₂:**
    - R_min = 0
-   - L'espace de travail est un disque complet
+   - Workspace is a complete disk
 
 2. **L₁ >> L₂:**
    - R_min ≈ L₁ - L₂
-   - Couronne étroite
+   - Narrow annulus
 
 3. **L₂ >> L₁:**
    - R_min ≈ L₂ - L₁
-   - Couronne large
+   - Wide annulus
 
-### Exemple
+### Example
 
-Pour L₁ = 200 mm et L₂ = 150 mm:
+For L₁ = 200 mm and L₂ = 150 mm:
 - R_max = 350 mm
 - R_min = 50 mm
-- Surface accessible = π(350² - 50²) ≈ 377,000 mm²
+- Accessible area = π(350² - 50²) ≈ 377,000 mm²
 
 ---
 
-## Singularités
+## Singularities
 
-### Définition
+### Definition
 
-Une **singularité** est une configuration où le robot perd un degré de liberté, c'est-à-dire où certains mouvements cartésiens deviennent impossibles.
+A **singularity** is a configuration where the robot loses a degree of freedom, meaning certain Cartesian movements become impossible.
 
-### Détection
+### Detection
 
-Une singularité se produit quand le déterminant de la jacobienne est nul:
+A singularity occurs when the Jacobian determinant is zero:
 
 ```
 det(J) = 0
 ```
 
-Pour notre robot 2DDL:
+For our 2-DOF robot:
 
 ```
 det(J) = L₁·L₂·sin(θ₂)
 ```
 
-### Configurations Singulières
+### Singular Configurations
 
-1. **θ₂ = 0** (Configuration étendue)
-   - Les deux segments sont alignés
-   - Impossible de se déplacer radialement
+1. **θ₂ = 0** (Extended configuration)
+   - Both segments are aligned
+   - Impossible to move radially
 
-2. **θ₂ = π** (Configuration repliée)
-   - Les deux segments sont opposés
-   - Impossible de se déplacer radialement
+2. **θ₂ = π** (Folded configuration)
+   - Both segments are opposite
+   - Impossible to move radially
 
-### Conséquences
+### Consequences
 
-En singularité:
-- Perte de contrôle dans certaines directions
-- Vitesses articulaires infinies requises
-- Instabilité numérique
+At singularity:
+- Loss of control in certain directions
+- Infinite joint velocities required
+- Numerical instability
 
-### Évitement
+### Avoidance
 
-1. **Limiter θ₂:**
+1. **Limit θ₂:**
    ```python
    theta2_min = -π/2  # -90°
    theta2_max = π/2   # +90°
    ```
 
-2. **Planification de trajectoire:**
-   - Éviter les zones singulières
-   - Changer de configuration si nécessaire
+2. **Trajectory planning:**
+   - Avoid singular zones
+   - Change configuration if necessary
 
 ---
 
-## Résumé des Formules
+## Formula Summary
 
-### Cinématique Directe
+### Forward Kinematics
 ```
 x = L₁·cos(θ₁) + L₂·cos(θ₁ + θ₂)
 y = L₁·sin(θ₁) + L₂·sin(θ₁ + θ₂)
 ```
 
-### Cinématique Inverse
+### Inverse Kinematics
 ```
 r = √(x² + y²)
 cos(θ₂) = (r² - L₁² - L₂²) / (2·L₁·L₂)
@@ -374,25 +374,25 @@ cos(θ₂) = (r² - L₁² - L₂²) / (2·L₁·L₂)
 θ₁ = atan2(y, x) - atan2(L₂·sin(θ₂), L₁ + L₂·cos(θ₂))
 ```
 
-### Jacobienne
+### Jacobian
 ```
 J = [[-L₁·sin(θ₁) - L₂·sin(θ₁+θ₂),  -L₂·sin(θ₁+θ₂)]
      [ L₁·cos(θ₁) + L₂·cos(θ₁+θ₂),   L₂·cos(θ₁+θ₂)]]
 ```
 
-### Espace de Travail
+### Workspace
 ```
 |L₁ - L₂| ≤ √(x² + y²) ≤ L₁ + L₂
 ```
 
-### Singularités
+### Singularities
 ```
-det(J) = L₁·L₂·sin(θ₂) = 0  ⟺  θ₂ = 0 ou π
+det(J) = L₁·L₂·sin(θ₂) = 0  ⟺  θ₂ = 0 or π
 ```
 
 ---
 
-## Références
+## References
 
 1. **Spong, M. W., Hutchinson, S., & Vidyasagar, M.** (2006). *Robot Modeling and Control*. Wiley.
 
@@ -404,4 +404,4 @@ det(J) = L₁·L₂·sin(θ₂) = 0  ⟺  θ₂ = 0 ou π
 
 **Version:** 1.0  
 **Date:** 2026-04-24  
-**Auteur:** Projet Thèse - Bras Robotique 2DDL
+**Author:** Thesis Project - 2-DOF Robotic Arm

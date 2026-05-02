@@ -1,44 +1,44 @@
-# Guide d'Utilisation - Bras Robotique 2DDL
+# User Guide - 2-DOF Robotic Arm
 
-## Table des Matières
+## Table of Contents
 
 1. [Introduction](#introduction)
 2. [Installation](#installation)
 3. [Phase 1: Simulation](#phase-1-simulation)
-4. [Phase 2: Contrôle Matériel](#phase-2-contrôle-matériel)
-5. [Phase 3: Système Complet](#phase-3-système-complet)
-6. [Dépannage](#dépannage)
+4. [Phase 2: Hardware Control](#phase-2-hardware-control)
+5. [Phase 3: Complete System](#phase-3-complete-system)
+6. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Introduction
 
-Ce projet implémente un système de contrôle en position pour un bras robotique à 2 degrés de liberté (2DDL) utilisant:
-- **Cinématique inverse** pour calculer les angles articulaires
-- **Moteurs pas à pas** avec drivers A4988
-- **GRBL** pour le contrôle des moteurs
-- **Python** pour l'implémentation
+This project implements a position control system for a 2 degrees of freedom (2-DOF) robotic arm using:
+- **Inverse kinematics** to calculate joint angles
+- **Stepper motors** with A4988 drivers
+- **GRBL** for motor control
+- **Python** for implementation
 
-### Architecture du Système
+### System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Interface Utilisateur                     │
-│              (GUI Tkinter / Console / Simulateur)            │
+│                    User Interface                            │
+│              (Tkinter GUI / Console / Simulator)             │
 └──────────────────────────┬──────────────────────────────────┘
                            │
 ┌──────────────────────────▼──────────────────────────────────┐
-│                   Contrôleur Robot                           │
+│                   Robot Controller                           │
 │              (robot_controller.py)                           │
 └──────────────┬────────────────────────────┬──────────────────┘
                │                            │
 ┌──────────────▼──────────────┐  ┌─────────▼──────────────────┐
-│   Cinématique Inverse       │  │   Contrôle Moteurs         │
+│   Inverse Kinematics        │  │   Motor Control            │
 │   (kinematics.py)           │  │   (motor_control.py)       │
 └─────────────────────────────┘  └────────────┬───────────────┘
                                               │
                                   ┌───────────▼───────────────┐
-                                  │   Interface GRBL          │
+                                  │   GRBL Interface          │
                                   │   (grbl_interface.py)     │
                                   └───────────┬───────────────┘
                                               │
@@ -47,11 +47,11 @@ Ce projet implémente un système de contrôle en position pour un bras robotiqu
                                   └───────────┬───────────────┘
                                               │
                                   ┌───────────▼───────────────┐
-                                  │   Drivers A4988           │
+                                  │   A4988 Drivers           │
                                   └───────────┬───────────────┘
                                               │
                                   ┌───────────▼───────────────┐
-                                  │   Moteurs Pas à Pas       │
+                                  │   Stepper Motors          │
                                   └───────────────────────────┘
 ```
 
@@ -59,29 +59,29 @@ Ce projet implémente un système de contrôle en position pour un bras robotiqu
 
 ## Installation
 
-### Prérequis
+### Prerequisites
 
-- Python 3.8 ou supérieur
-- pip (gestionnaire de paquets Python)
-- Arduino avec GRBL (pour le contrôle matériel)
+- Python 3.8 or higher
+- pip (Python package manager)
+- Arduino with GRBL (for hardware control)
 
-### Installation des Dépendances
+### Installing Dependencies
 
 ```bash
-# Cloner ou télécharger le projet
+# Clone or download the project
 cd SIMULATION
 
-# Installer les dépendances
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### Vérification de l'Installation
+### Installation Verification
 
 ```bash
-# Tester la configuration
+# Test configuration
 python phase1_simulation/config.py
 
-# Tester la cinématique
+# Test kinematics
 python phase1_simulation/kinematics.py
 ```
 
@@ -89,46 +89,46 @@ python phase1_simulation/kinematics.py
 
 ## Phase 1: Simulation
 
-### 1.1 Tester la Cinématique
+### 1.1 Test Kinematics
 
 ```bash
 cd phase1_simulation
 python kinematics.py
 ```
 
-**Sortie attendue:**
+**Expected output:**
 ```
-=== Test de la Cinématique ===
+=== Kinematics Test ===
 
-1. Cinématique Directe:
+1. Forward Kinematics:
    θ1=45.0°, θ2=30.0°
    → Position: x=318.20mm, y=183.71mm
 
-2. Cinématique Inverse:
-   Position cible: x=250.00mm, y=150.00mm
+2. Inverse Kinematics:
+   Target position: x=250.00mm, y=150.00mm
    → θ1=31.0°, θ2=28.1°
-   Vérification: x=250.00mm, y=150.00mm
-   Erreur: 0.0000mm
+   Verification: x=250.00mm, y=150.00mm
+   Error: 0.0000mm
 ...
 ```
 
-### 1.2 Lancer le Simulateur Visuel
+### 1.2 Launch Visual Simulator
 
 ```bash
 python simulator.py
 ```
 
-**Commandes du simulateur:**
-- **Flèches** : Contrôle des angles (θ1 et θ2)
-- **Clic gauche** : Définir une position cible
-- **M** : Changer de mode (angles/position)
-- **E** : Changer configuration du coude
-- **R** : Réinitialiser
-- **G** : Afficher/masquer la grille
-- **W** : Afficher/masquer l'espace de travail
-- **ESC** : Quitter
+**Simulator commands:**
+- **Arrow keys**: Angle control (θ1 and θ2)
+- **Left click**: Set target position
+- **M**: Change mode (angles/position)
+- **E**: Change elbow configuration
+- **R**: Reset
+- **G**: Show/hide grid
+- **W**: Show/hide workspace
+- **ESC**: Quit
 
-### 1.3 Exécuter les Tests
+### 1.3 Run Tests
 
 ```bash
 cd ../tests
@@ -137,137 +137,137 @@ pytest test_kinematics.py -v
 
 ---
 
-## Phase 2: Contrôle Matériel
+## Phase 2: Hardware Control
 
-### 2.1 Préparation du Matériel
+### 2.1 Hardware Preparation
 
-#### Câblage Arduino + A4988
+#### Arduino + A4988 Wiring
 
-Consultez le schéma détaillé:
+Consult detailed diagram:
 ```bash
 python phase2_hardware/a4988_config.py
 ```
 
-**Points importants:**
-1. ⚠️ **Régler Vref AVANT de connecter les moteurs**
-2. Ajouter des condensateurs (100µF + 0.1µF)
-3. Vérifier la polarité des moteurs
-4. Prévoir un dissipateur thermique
+**Important points:**
+1. ⚠️ **Set Vref BEFORE connecting motors**
+2. Add capacitors (100µF + 0.1µF)
+3. Check motor polarity
+4. Provide heat sink
 
-#### Configuration GRBL
+#### GRBL Configuration
 
-1. Flasher GRBL sur l'Arduino:
-   - Télécharger GRBL depuis https://github.com/gnea/grbl
-   - Utiliser l'IDE Arduino pour flasher
+1. Flash GRBL on Arduino:
+   - Download GRBL from https://github.com/gnea/grbl
+   - Use Arduino IDE to flash
 
-2. Configurer les paramètres:
+2. Configure parameters:
 ```bash
 python phase2_hardware/motor_control.py
-# Choisir option 6: Configurer GRBL
+# Choose option 6: Configure GRBL
 ```
 
-### 2.2 Test de Communication GRBL
+### 2.2 GRBL Communication Test
 
 ```bash
 cd phase2_hardware
 python grbl_interface.py
 ```
 
-**Menu de test:**
+**Test menu:**
 ```
-1. Statut          - Vérifier l'état de GRBL
-2. Homing          - Retour à l'origine
-3. Unlock          - Déverrouiller après alarme
-4. Définir origine - Définir position actuelle comme (0,0)
-5-7. Jog           - Mouvements de test
-8. Paramètres      - Afficher configuration GRBL
+1. Status          - Check GRBL state
+2. Homing          - Return to origin
+3. Unlock          - Unlock after alarm
+4. Set origin      - Set current position as (0,0)
+5-7. Jog           - Test movements
+8. Parameters      - Display GRBL configuration
 ```
 
-### 2.3 Test des Moteurs
+### 2.3 Motor Testing
 
 ```bash
 python motor_control.py
 ```
 
-**Séquence de test recommandée:**
+**Recommended test sequence:**
 1. Homing (option 1)
-2. Définir origine (option 2)
-3. Déplacer vers angles (option 3) - Tester avec petits angles
-4. Vérifier la position (option 5)
+2. Set origin (option 2)
+3. Move to angles (option 3) - Test with small angles
+4. Check position (option 5)
 
 ---
 
-## Phase 3: Système Complet
+## Phase 3: Complete System
 
-### 3.1 Interface en Ligne de Commande
+### 3.1 Command Line Interface
 
 ```bash
 cd phase3_integration
 python robot_controller.py
 ```
 
-**Modes disponibles:**
-- **Simulation** : Test sans matériel
-- **Matériel** : Contrôle direct du robot
-- **Hybride** : Simulation + contrôle matériel
+**Available modes:**
+- **Simulation**: Test without hardware
+- **Hardware**: Direct robot control
+- **Hybrid**: Simulation + hardware control
 
-### 3.2 Interface Graphique
+### 3.2 Graphical Interface
 
 ```bash
 python gui.py
 ```
 
-**Fonctionnalités:**
-- Contrôle par angles ou position
-- Planification de trajectoires
-- Trajectoires prédéfinies (carré, cercle)
-- Console de logs
-- Configuration en temps réel
+**Features:**
+- Control by angles or position
+- Trajectory planning
+- Predefined trajectories (square, circle)
+- Log console
+- Real-time configuration
 
-### 3.3 Exemples d'Utilisation
+### 3.3 Usage Examples
 
-#### Exemple 1: Déplacement Simple
+#### Example 1: Simple Movement
 
 ```python
 from config import config
 from robot_controller import RobotController, ControlMode
 import numpy as np
 
-# Mode simulation
+# Simulation mode
 with RobotController(config, ControlMode.SIMULATION) as robot:
-    # Déplacer vers des angles
+    # Move to angles
     robot.move_to_angles(np.radians(45), np.radians(30))
     
-    # Déplacer vers une position
+    # Move to position
     robot.move_to_position(250, 150)
     
-    # Obtenir la position actuelle
+    # Get current position
     x, y = robot.get_current_position()
     print(f"Position: ({x:.1f}, {y:.1f})")
 ```
 
-#### Exemple 2: Trajectoire Linéaire
+#### Example 2: Linear Trajectory
 
 ```python
-# Planifier une trajectoire
+# Plan trajectory
 trajectory = robot.plan_linear_trajectory(300, 200, num_points=50)
 
 if trajectory is not None:
-    # Exécuter la trajectoire
+    # Execute trajectory
     robot.execute_trajectory(trajectory, feed_rate=1000)
 ```
 
-#### Exemple 3: Trajectoire Circulaire
+#### Example 3: Circular Trajectory
 
 ```python
 import numpy as np
 
-# Centre et rayon du cercle
+# Circle center and radius
 center_x, center_y = 225, 125
 radius = 30
 num_points = 36
 
-# Générer les points
+# Generate points
 for i in range(num_points + 1):
     angle = 2 * np.pi * i / num_points
     x = center_x + radius * np.cos(angle)
@@ -277,12 +277,12 @@ for i in range(num_points + 1):
 
 ---
 
-## Dépannage
+## Troubleshooting
 
-### Problème: Impossible de se connecter à GRBL
+### Problem: Cannot connect to GRBL
 
 **Solutions:**
-1. Vérifier le port série:
+1. Check serial port:
    ```python
    import serial.tools.list_ports
    ports = serial.tools.list_ports.comports()
@@ -290,73 +290,73 @@ for i in range(num_points + 1):
        print(port.device)
    ```
 
-2. Vérifier que GRBL est flashé sur l'Arduino
-3. Fermer les autres programmes utilisant le port série
-4. Essayer un autre câble USB
+2. Verify GRBL is flashed on Arduino
+3. Close other programs using serial port
+4. Try another USB cable
 
-### Problème: Position non atteignable
+### Problem: Position unreachable
 
-**Causes possibles:**
-- Position hors de l'espace de travail
-- Angles hors limites
-- Configuration incorrecte des longueurs L1, L2
+**Possible causes:**
+- Position outside workspace
+- Angles out of limits
+- Incorrect L1, L2 length configuration
 
-**Vérification:**
+**Verification:**
 ```python
 from kinematics import Kinematics
 from config import config
 
 kin = Kinematics(config)
-print(f"Position atteignable: {kin.is_position_reachable(x, y)}")
+print(f"Position reachable: {kin.is_position_reachable(x, y)}")
 ```
 
-### Problème: Moteurs ne bougent pas
+### Problem: Motors not moving
 
-**Vérifications:**
-1. Vref correctement réglé
-2. Alimentation moteurs connectée
-3. Pins ENABLE à LOW
-4. Câblage correct (STEP, DIR)
-5. Paramètres GRBL corrects ($100, $101)
+**Checks:**
+1. Vref correctly set
+2. Motor power supply connected
+3. ENABLE pins at LOW
+4. Correct wiring (STEP, DIR)
+5. Correct GRBL parameters ($100, $101)
 
-### Problème: Mouvements erratiques
+### Problem: Erratic movements
 
 **Solutions:**
-1. Réduire la vitesse (feed_rate)
-2. Augmenter l'accélération dans GRBL ($120, $121)
-3. Vérifier les condensateurs
-4. Vérifier le câblage des phases moteur
+1. Reduce speed (feed_rate)
+2. Increase acceleration in GRBL ($120, $121)
+3. Check capacitors
+4. Check motor phase wiring
 
-### Problème: Erreur de précision
+### Problem: Precision error
 
 **Causes:**
-- Quantification des pas moteur
-- Jeu mécanique
-- Flexibilité des segments
+- Motor step quantization
+- Mechanical backlash
+- Segment flexibility
 
-**Amélioration:**
-1. Augmenter le microstepping (1/16 ou 1/32)
-2. Ajouter des réducteurs
-3. Calibrer les paramètres steps/mm
+**Improvement:**
+1. Increase microstepping (1/16 or 1/32)
+2. Add gear reducers
+3. Calibrate steps/mm parameters
 
 ---
 
-## Paramètres Importants
+## Important Parameters
 
-### Configuration Robot (config.py)
+### Robot Configuration (config.py)
 
 ```python
-L1 = 200.0  # Longueur segment 1 (mm)
-L2 = 150.0  # Longueur segment 2 (mm)
-steps_per_revolution = 200  # Pas par tour
+L1 = 200.0  # Segment 1 length (mm)
+L2 = 150.0  # Segment 2 length (mm)
+steps_per_revolution = 200  # Steps per revolution
 microsteps = 16  # Microstepping
 ```
 
-### Paramètres GRBL Critiques
+### Critical GRBL Parameters
 
 ```
-$100 = 100.0  # X steps/mm (à calibrer)
-$101 = 100.0  # Y steps/mm (à calibrer)
+$100 = 100.0  # X steps/mm (to calibrate)
+$101 = 100.0  # Y steps/mm (to calibrate)
 $110 = 2000.0 # X max rate (mm/min)
 $111 = 2000.0 # Y max rate (mm/min)
 $120 = 500.0  # X acceleration (mm/s²)
@@ -365,32 +365,32 @@ $121 = 500.0  # Y acceleration (mm/s²)
 
 ### Calibration
 
-Pour calibrer les steps/mm:
-1. Marquer une position de départ
-2. Commander un déplacement de 100mm
-3. Mesurer le déplacement réel
-4. Ajuster: `$100 = $100 * (100 / mesure_réelle)`
+To calibrate steps/mm:
+1. Mark starting position
+2. Command 100mm movement
+3. Measure actual movement
+4. Adjust: `$100 = $100 * (100 / actual_measurement)`
 
 ---
 
-## Ressources Supplémentaires
+## Additional Resources
 
-- **Documentation GRBL**: https://github.com/gnea/grbl/wiki
-- **Datasheet A4988**: https://www.pololu.com/product/1182
-- **Théorie cinématique**: Voir `docs/theorie_cinematique.md`
+- **GRBL Documentation**: https://github.com/gnea/grbl/wiki
+- **A4988 Datasheet**: https://www.pololu.com/product/1182
+- **Kinematics Theory**: See `docs/theorie_cinematique.md`
 
 ---
 
 ## Support
 
-Pour toute question ou problème:
-1. Consulter la section Dépannage
-2. Vérifier les logs dans la console
-3. Tester en mode simulation d'abord
-4. Vérifier le câblage matériel
+For any questions or problems:
+1. Consult Troubleshooting section
+2. Check console logs
+3. Test in simulation mode first
+4. Verify hardware wiring
 
 ---
 
 **Version:** 1.0  
 **Date:** 2026-04-24  
-**Auteur:** Projet Thèse - Bras Robotique 2DDL
+**Author:** Thesis Project - 2-DOF Robotic Arm

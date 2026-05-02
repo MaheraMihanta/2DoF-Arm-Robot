@@ -1,42 +1,42 @@
-# Architecture du Projet - Bras Robotique 2DDL
+# Project Architecture - 2-DOF Robotic Arm
 
-## Vue d'Ensemble
+## Overview
 
-Ce document décrit l'architecture logicielle du système de contrôle du bras robotique 2DDL.
+This document describes the software architecture of the 2-DOF robotic arm control system.
 
-## Structure des Modules
+## Module Structure
 
 ```
 SIMULATION/
 │
-├── phase1_simulation/          # Phase 1: Modélisation et Simulation
-│   ├── config.py              # Configuration du robot
-│   ├── kinematics.py          # Cinématique directe et inverse
-│   └── simulator.py           # Simulateur visuel (Pygame)
+├── phase1_simulation/          # Phase 1: Modeling and Simulation
+│   ├── config.py              # Robot configuration
+│   ├── kinematics.py          # Direct and inverse kinematics
+│   └── simulator.py           # Visual simulator (Pygame)
 │
-├── phase2_hardware/           # Phase 2: Contrôle Matériel
-│   ├── grbl_interface.py      # Communication série avec GRBL
-│   ├── motor_control.py       # Contrôle des moteurs
-│   └── a4988_config.py        # Configuration drivers A4988
+├── phase2_hardware/           # Phase 2: Hardware Control
+│   ├── grbl_interface.py      # Serial communication with GRBL
+│   ├── motor_control.py       # Motor control
+│   └── a4988_config.py        # A4988 driver configuration
 │
-├── phase3_integration/        # Phase 3: Intégration
-│   ├── robot_controller.py    # Contrôleur principal
-│   └── gui.py                 # Interface graphique (Tkinter)
+├── phase3_integration/        # Phase 3: Integration
+│   ├── robot_controller.py    # Main controller
+│   └── gui.py                 # Graphical interface (Tkinter)
 │
-├── tests/                     # Tests unitaires
-│   └── test_kinematics.py     # Tests de la cinématique
+├── tests/                     # Unit tests
+│   └── test_kinematics.py     # Kinematics tests
 │
 ├── docs/                      # Documentation
-│   ├── guide_utilisation.md   # Guide utilisateur
-│   ├── theorie_cinematique.md # Théorie mathématique
-│   └── architecture.md        # Ce document
+│   ├── guide_utilisation.md   # User guide
+│   ├── theorie_cinematique.md # Mathematical theory
+│   └── architecture.md        # This document
 │
-├── README.md                  # Documentation principale
-├── QUICKSTART.md             # Démarrage rapide
-└── requirements.txt          # Dépendances Python
+├── README.md                  # Main documentation
+├── QUICKSTART.md             # Quick start
+└── requirements.txt          # Python dependencies
 ```
 
-## Diagramme de Classes
+## Class Diagram
 
 ### Phase 1: Simulation
 
@@ -44,20 +44,20 @@ SIMULATION/
 ┌─────────────────────────────────────────────────────────────┐
 │                        RobotConfig                          │
 ├─────────────────────────────────────────────────────────────┤
-│ + L1: float                    # Longueur segment 1         │
-│ + L2: float                    # Longueur segment 2         │
-│ + steps_per_revolution: int    # Pas par tour               │
+│ + L1: float                    # Segment 1 length            │
+│ + L2: float                    # Segment 2 length            │
+│ + steps_per_revolution: int    # Steps per revolution        │
 │ + microsteps: int              # Microstepping              │
-│ + theta1_min/max: float        # Limites angulaires         │
+│ + theta1_min/max: float        # Angular limits             │
 │ + theta2_min/max: float                                     │
 ├─────────────────────────────────────────────────────────────┤
-│ + is_angle_valid()             # Vérifier limites           │
-│ + angles_to_steps()            # Convertir angles → pas     │
-│ + steps_to_angles()            # Convertir pas → angles     │
-│ + get_workspace_limits()       # Limites espace travail     │
+│ + is_angle_valid()             # Check limits               │
+│ + angles_to_steps()            # Convert angles → steps     │
+│ + steps_to_angles()            # Convert steps → angles     │
+│ + get_workspace_limits()       # Workspace limits           │
 └─────────────────────────────────────────────────────────────┘
                             ▲
-                            │ utilise
+                            │ uses
                             │
 ┌─────────────────────────────────────────────────────────────┐
 │                        Kinematics                           │
@@ -68,13 +68,13 @@ SIMULATION/
 ├─────────────────────────────────────────────────────────────┤
 │ + forward_kinematics()         # (θ1,θ2) → (x,y)           │
 │ + inverse_kinematics()         # (x,y) → (θ1,θ2)           │
-│ + jacobian()                   # Matrice jacobienne         │
-│ + get_joint_positions()        # Positions articulations    │
-│ + is_position_reachable()      # Vérifier atteignabilité    │
-│ + compute_trajectory()         # Planifier trajectoire      │
+│ + jacobian()                   # Jacobian matrix            │
+│ + get_joint_positions()        # Joint positions            │
+│ + is_position_reachable()      # Check reachability         │
+│ + compute_trajectory()         # Plan trajectory            │
 └─────────────────────────────────────────────────────────────┘
                             ▲
-                            │ utilise
+                            │ uses
                             │
 ┌─────────────────────────────────────────────────────────────┐
 │                      RobotSimulator                         │
@@ -82,36 +82,36 @@ SIMULATION/
 │ - config: RobotConfig                                       │
 │ - kinematics: Kinematics                                    │
 │ - screen: pygame.Surface                                    │
-│ - theta1, theta2: float        # État actuel                │
+│ - theta1, theta2: float        # Current state              │
 ├─────────────────────────────────────────────────────────────┤
-│ + draw_robot()                 # Dessiner le bras           │
-│ + draw_workspace()             # Dessiner espace travail    │
-│ + handle_input()               # Gérer entrées utilisateur  │
-│ + run()                        # Boucle principale          │
+│ + draw_robot()                 # Draw arm                   │
+│ + draw_workspace()             # Draw workspace             │
+│ + handle_input()               # Handle user input          │
+│ + run()                        # Main loop                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Phase 2: Matériel
+### Phase 2: Hardware
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      GRBLInterface                          │
 ├─────────────────────────────────────────────────────────────┤
-│ - port: str                    # Port série                 │
-│ - baudrate: int                # Vitesse communication      │
-│ - serial_connection: Serial    # Connexion série            │
+│ - port: str                    # Serial port                │
+│ - baudrate: int                # Communication speed        │
+│ - serial_connection: Serial    # Serial connection          │
 │ - is_connected: bool                                        │
 ├─────────────────────────────────────────────────────────────┤
-│ + connect()                    # Établir connexion          │
-│ + disconnect()                 # Fermer connexion           │
-│ + send_command()               # Envoyer G-code             │
-│ + get_status()                 # Lire statut GRBL           │
+│ + connect()                    # Establish connection       │
+│ + disconnect()                 # Close connection           │
+│ + send_command()               # Send G-code                │
+│ + get_status()                 # Read GRBL status           │
 │ + home()                       # Homing                     │
-│ + move_absolute()              # Déplacement absolu         │
-│ + jog()                        # Déplacement manuel         │
+│ + move_absolute()              # Absolute movement          │
+│ + jog()                        # Manual movement            │
 └─────────────────────────────────────────────────────────────┘
                             ▲
-                            │ utilise
+                            │ uses
                             │
 ┌─────────────────────────────────────────────────────────────┐
 │                      MotorController                        │
@@ -121,28 +121,28 @@ SIMULATION/
 │ - current_theta1, theta2: float                             │
 │ - current_steps_1, steps_2: int                             │
 ├─────────────────────────────────────────────────────────────┤
-│ + move_to_angles()             # Déplacer vers angles       │
-│ + move_incremental()           # Déplacement incrémental    │
-│ + home_motors()                # Homing des moteurs         │
-│ + execute_trajectory()         # Exécuter trajectoire       │
-│ + angles_to_gcode_position()   # Convertir angles → G-code  │
+│ + move_to_angles()             # Move to angles             │
+│ + move_incremental()           # Incremental movement       │
+│ + home_motors()                # Motor homing               │
+│ + execute_trajectory()         # Execute trajectory         │
+│ + angles_to_gcode_position()   # Convert angles → G-code    │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
 │                       A4988Config                           │
 ├─────────────────────────────────────────────────────────────┤
-│ + microstep_modes: dict        # Configurations µstep       │
-│ + max_current: float           # Courant max                │
-│ + pin_mapping: dict            # Mapping des pins           │
+│ + microstep_modes: dict        # µstep configurations       │
+│ + max_current: float           # Max current                │
+│ + pin_mapping: dict            # Pin mapping                │
 ├─────────────────────────────────────────────────────────────┤
-│ + get_microstep_pins()         # Config pins MS1/MS2/MS3    │
-│ + calculate_current_limit_vref() # Calcul Vref              │
-│ + get_wiring_diagram()         # Schéma de câblage          │
-│ + get_grbl_settings()          # Paramètres GRBL            │
+│ + get_microstep_pins()         # MS1/MS2/MS3 pin config     │
+│ + calculate_current_limit_vref() # Calculate Vref           │
+│ + get_wiring_diagram()         # Wiring diagram             │
+│ + get_grbl_settings()          # GRBL parameters            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Phase 3: Intégration
+### Phase 3: Integration
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -150,46 +150,46 @@ SIMULATION/
 ├─────────────────────────────────────────────────────────────┤
 │ - config: RobotConfig                                       │
 │ - kinematics: Kinematics                                    │
-│ - grbl: GRBLInterface          # Optionnel                  │
-│ - motor_controller: MotorController # Optionnel             │
+│ - grbl: GRBLInterface          # Optional                   │
+│ - motor_controller: MotorController # Optional              │
 │ - mode: ControlMode            # simulation/hardware/hybrid │
 ├─────────────────────────────────────────────────────────────┤
-│ + move_to_angles()             # Déplacer vers angles       │
-│ + move_to_position()           # Déplacer vers position     │
-│ + execute_trajectory()         # Exécuter trajectoire       │
-│ + plan_linear_trajectory()     # Planifier trajectoire      │
-│ + home()                       # Retour origine             │
-│ + get_current_position()       # Position actuelle          │
+│ + move_to_angles()             # Move to angles             │
+│ + move_to_position()           # Move to position           │
+│ + execute_trajectory()         # Execute trajectory         │
+│ + plan_linear_trajectory()     # Plan trajectory            │
+│ + home()                       # Return to origin           │
+│ + get_current_position()       # Current position           │
 └─────────────────────────────────────────────────────────────┘
                             ▲
-                            │ utilise
+                            │ uses
                             │
 ┌─────────────────────────────────────────────────────────────┐
 │                         RobotGUI                            │
 ├─────────────────────────────────────────────────────────────┤
-│ - root: tk.Tk                  # Fenêtre principale         │
-│ - robot: RobotController       # Contrôleur                 │
+│ - root: tk.Tk                  # Main window                │
+│ - robot: RobotController       # Controller                 │
 │ - config: RobotConfig                                       │
 ├─────────────────────────────────────────────────────────────┤
-│ + create_control_tab()         # Onglet contrôle            │
-│ + create_trajectory_tab()      # Onglet trajectoires        │
-│ + create_config_tab()          # Onglet configuration       │
-│ + connect()                    # Connecter robot            │
-│ + move_to_angles()             # Déplacer vers angles       │
-│ + move_to_position()           # Déplacer vers position     │
-│ + plan_linear_trajectory()     # Planifier trajectoire      │
+│ + create_control_tab()         # Control tab                │
+│ + create_trajectory_tab()      # Trajectory tab             │
+│ + create_config_tab()          # Configuration tab          │
+│ + connect()                    # Connect robot              │
+│ + move_to_angles()             # Move to angles             │
+│ + move_to_position()           # Move to position           │
+│ + plan_linear_trajectory()     # Plan trajectory            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Flux de Données
+## Data Flow
 
-### 1. Mode Simulation
+### 1. Simulation Mode
 
 ```
-Utilisateur
+User
     │
     ▼
-Interface (GUI/Simulateur)
+Interface (GUI/Simulator)
     │
     ▼
 RobotController (mode=SIMULATION)
@@ -202,10 +202,10 @@ Kinematics
     └─→ inverse_kinematics() → Angles (θ1, θ2)
 ```
 
-### 2. Mode Matériel
+### 2. Hardware Mode
 
 ```
-Utilisateur
+User
     │
     ▼
 Interface (GUI/CLI)
@@ -213,7 +213,7 @@ Interface (GUI/CLI)
     ▼
 RobotController (mode=HARDWARE)
     │
-    ├─→ Kinematics → Calcul angles
+    ├─→ Kinematics → Angle calculation
     │
     └─→ MotorController
             │
@@ -221,25 +221,25 @@ RobotController (mode=HARDWARE)
         GRBLInterface
             │
             ▼
-        Port Série (USB)
+        Serial Port (USB)
             │
             ▼
         Arduino + GRBL
             │
             ▼
-        Drivers A4988
+        A4988 Drivers
             │
             ▼
-        Moteurs Pas à Pas
+        Stepper Motors
             │
             ▼
-        Bras Robotique
+        Robotic Arm
 ```
 
-### 3. Mode Hybride
+### 3. Hybrid Mode
 
 ```
-Utilisateur
+User
     │
     ▼
 Interface
@@ -249,39 +249,39 @@ RobotController (mode=HYBRID)
     │
     ├─→ Kinematics (simulation)
     │       │
-    │       └─→ Visualisation
+    │       └─→ Visualization
     │
-    └─→ MotorController (matériel)
+    └─→ MotorController (hardware)
             │
-            └─→ Contrôle physique
+            └─→ Physical control
 ```
 
-## Protocoles de Communication
+## Communication Protocols
 
-### Communication GRBL
+### GRBL Communication
 
-**Format des commandes:**
+**Command format:**
 ```
-G-code → Arduino (GRBL) → Moteurs
+G-code → Arduino (GRBL) → Motors
 
-Exemples:
-- G90 G1 X100 Y50 F1000  # Déplacement absolu
+Examples:
+- G90 G1 X100 Y50 F1000  # Absolute movement
 - $H                      # Homing
-- ?                       # Statut
+- ?                       # Status
 - $X                      # Unlock
 ```
 
-**Format des réponses:**
+**Response format:**
 ```
-ok                        # Commande acceptée
-error:N                   # Erreur (N = code)
-<Idle|MPos:x,y,z|...>    # Statut
+ok                        # Command accepted
+error:N                   # Error (N = code)
+<Idle|MPos:x,y,z|...>    # Status
 ```
 
-### Mapping Axes
+### Axis Mapping
 
 ```
-Robot 2DDL          GRBL
+2-DOF Robot         GRBL
 ─────────────────────────
 θ1 (angle 1)    →   X (mm)
 θ2 (angle 2)    →   Y (mm)
@@ -289,73 +289,73 @@ Robot 2DDL          GRBL
 
 **Conversion:**
 ```python
-# Angles → Position G-code
+# Angles → G-code position
 steps1, steps2 = config.angles_to_steps(theta1, theta2)
 x_gcode = steps1 * 0.01  # mm
 y_gcode = steps2 * 0.01  # mm
 ```
 
-## Gestion des Erreurs
+## Error Handling
 
-### Hiérarchie des Exceptions
+### Exception Hierarchy
 
 ```
 Exception
 │
 ├─ ValueError
-│  ├─ Position hors limites
-│  └─ Angles invalides
+│  ├─ Position out of bounds
+│  └─ Invalid angles
 │
 ├─ ConnectionError
-│  ├─ Port série introuvable
-│  └─ GRBL non connecté
+│  ├─ Serial port not found
+│  └─ GRBL not connected
 │
 └─ RuntimeError
-   ├─ Commande GRBL échouée
-   └─ Timeout communication
+   ├─ GRBL command failed
+   └─ Communication timeout
 ```
 
-### Stratégies de Récupération
+### Recovery Strategies
 
-1. **Position non atteignable:**
-   - Vérifier avec `is_position_reachable()`
-   - Proposer position la plus proche
+1. **Unreachable position:**
+   - Check with `is_position_reachable()`
+   - Propose nearest position
 
-2. **Erreur GRBL:**
-   - Lire le code d'erreur
-   - Tenter unlock ($X)
-   - Soft reset si nécessaire
+2. **GRBL error:**
+   - Read error code
+   - Attempt unlock ($X)
+   - Soft reset if necessary
 
-3. **Perte de communication:**
-   - Détecter timeout
-   - Tenter reconnexion
-   - Mode dégradé (simulation)
+3. **Communication loss:**
+   - Detect timeout
+   - Attempt reconnection
+   - Degraded mode (simulation)
 
-## Extensibilité
+## Extensibility
 
-### Ajouter un Nouveau Mode de Contrôle
+### Adding a New Control Mode
 
 ```python
-# 1. Définir le mode
+# 1. Define mode
 class ControlMode(Enum):
     SIMULATION = "simulation"
     HARDWARE = "hardware"
     HYBRID = "hybrid"
-    NOUVEAU_MODE = "nouveau_mode"  # Nouveau
+    NEW_MODE = "new_mode"  # New
 
-# 2. Implémenter dans RobotController
+# 2. Implement in RobotController
 def move_to_angles(self, theta1, theta2):
-    if self.mode == ControlMode.NOUVEAU_MODE:
-        # Logique spécifique
+    if self.mode == ControlMode.NEW_MODE:
+        # Specific logic
         pass
 ```
 
-### Ajouter un Nouveau Type de Trajectoire
+### Adding a New Trajectory Type
 
 ```python
-# Dans Kinematics
+# In Kinematics
 def compute_circular_trajectory(self, center, radius, num_points):
-    """Trajectoire circulaire"""
+    """Circular trajectory"""
     trajectory = []
     for i in range(num_points):
         angle = 2 * np.pi * i / num_points
@@ -369,12 +369,12 @@ def compute_circular_trajectory(self, center, radius, num_points):
     return np.array(trajectory)
 ```
 
-### Ajouter un Nouveau Driver
+### Adding a New Driver
 
 ```python
-# Créer un nouveau fichier: phase2_hardware/drv8825_config.py
+# Create new file: phase2_hardware/drv8825_config.py
 class DRV8825Config:
-    """Configuration pour driver DRV8825"""
+    """Configuration for DRV8825 driver"""
     def __init__(self):
         self.microstep_modes = {
             1: (0, 0, 0),
@@ -382,77 +382,77 @@ class DRV8825Config:
             4: (0, 1, 0),
             8: (1, 1, 0),
             16: (0, 0, 1),
-            32: (1, 0, 1)  # DRV8825 supporte 1/32
+            32: (1, 0, 1)  # DRV8825 supports 1/32
         }
 ```
 
 ## Performance
 
-### Optimisations Implémentées
+### Implemented Optimizations
 
-1. **Calculs vectoriels:** Utilisation de NumPy
-2. **Cache des positions:** Historique limité
-3. **Communication asynchrone:** Threads pour GUI
-4. **Validation précoce:** Vérification avant envoi
+1. **Vector calculations:** Using NumPy
+2. **Position cache:** Limited history
+3. **Asynchronous communication:** Threads for GUI
+4. **Early validation:** Verification before sending
 
-### Métriques Typiques
+### Typical Metrics
 
-- **Calcul cinématique inverse:** < 1 ms
-- **Envoi commande GRBL:** 10-50 ms
-- **Fréquence simulation:** 60 FPS
-- **Latence totale:** < 100 ms
+- **Inverse kinematics calculation:** < 1 ms
+- **GRBL command sending:** 10-50 ms
+- **Simulation frequency:** 60 FPS
+- **Total latency:** < 100 ms
 
-## Sécurité
+## Security
 
-### Mécanismes de Sécurité
+### Security Mechanisms
 
-1. **Limites logicielles:**
-   - Vérification angles avant mouvement
-   - Vérification espace de travail
+1. **Software limits:**
+   - Angle verification before movement
+   - Workspace verification
 
-2. **Arrêt d'urgence:**
-   - Soft reset GRBL (Ctrl-X)
-   - Accessible depuis toutes les interfaces
+2. **Emergency stop:**
+   - GRBL soft reset (Ctrl-X)
+   - Accessible from all interfaces
 
-3. **Validation des entrées:**
+3. **Input validation:**
    - Type checking
    - Range checking
    - Sanitization
 
-4. **Mode dégradé:**
-   - Basculement automatique en simulation
-   - Logs détaillés
+4. **Degraded mode:**
+   - Automatic switch to simulation
+   - Detailed logs
 
 ## Tests
 
-### Couverture des Tests
+### Test Coverage
 
 ```
 tests/test_kinematics.py
 ├─ TestKinematics
-│  ├─ Cinématique directe (5 tests)
-│  ├─ Cinématique inverse (8 tests)
-│  ├─ Jacobienne (2 tests)
-│  ├─ Espace de travail (3 tests)
-│  └─ Trajectoires (2 tests)
+│  ├─ Direct kinematics (5 tests)
+│  ├─ Inverse kinematics (8 tests)
+│  ├─ Jacobian (2 tests)
+│  ├─ Workspace (3 tests)
+│  └─ Trajectories (2 tests)
 │
 └─ TestRobotConfig
    ├─ Configuration (4 tests)
    └─ Conversions (3 tests)
 
-Total: 27 tests unitaires
+Total: 27 unit tests
 ```
 
-### Exécution des Tests
+### Running Tests
 
 ```bash
-# Tous les tests
+# All tests
 pytest tests/ -v
 
-# Avec couverture
+# With coverage
 pytest tests/ --cov=phase1_simulation --cov-report=html
 
-# Tests spécifiques
+# Specific tests
 pytest tests/test_kinematics.py::TestKinematics::test_forward_kinematics_zero_angles
 ```
 
@@ -460,7 +460,7 @@ pytest tests/test_kinematics.py::TestKinematics::test_forward_kinematics_zero_an
 
 ### Logs
 
-Tous les modules utilisent `print()` pour les logs. Pour une application production, remplacer par `logging`:
+All modules use `print()` for logs. For production application, replace with `logging`:
 
 ```python
 import logging
@@ -468,19 +468,19 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-logger.info("Message d'information")
-logger.warning("Avertissement")
-logger.error("Erreur")
+logger.info("Information message")
+logger.warning("Warning")
+logger.error("Error")
 ```
 
 ### Versioning
 
-- **Version actuelle:** 1.0
+- **Current version:** 1.0
 - **Format:** MAJOR.MINOR.PATCH
-- **Changelog:** À créer dans `CHANGELOG.md`
+- **Changelog:** To be created in `CHANGELOG.md`
 
 ---
 
 **Version:** 1.0  
 **Date:** 2026-04-24  
-**Auteur:** Projet Thèse - Bras Robotique 2DDL
+**Author:** Thesis Project - 2-DOF Robotic Arm

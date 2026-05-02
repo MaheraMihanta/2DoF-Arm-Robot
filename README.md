@@ -1,57 +1,57 @@
-# Bras Robotique 2DDL Asservi en Position avec GRBL
+# 2-DOF Position-Controlled Robotic Arm with GRBL
 
-Projet de contrôle d'un bras robotique à 2 degrés de liberté (2DDL) utilisant des moteurs pas à pas pilotés par GRBL.
+Project for controlling a 2 degrees of freedom (2-DOF) robotic arm using stepper motors driven by GRBL.
 
-## 🎯 Objectif
+## 🎯 Objective
 
-Implémenter un système de contrôle en position en boucle ouverte pour un bras robotique 2DDL, en utilisant la cinématique inverse pour déterminer les consignes d'angles θ1 et θ2.
+Implement an open-loop position control system for a 2-DOF robotic arm, using inverse kinematics to determine the angle setpoints θ1 and θ2.
 
-## 📁 Structure du Projet
+## 📁 Project Structure
 
 ```
 SIMULATION/
-├── phase1_simulation/     # Modélisation et simulation
-│   ├── kinematics.py      # Cinématique directe et inverse
-│   ├── simulator.py       # Simulateur visuel
-│   └── config.py          # Configuration du bras
-├── phase2_hardware/       # Commande matérielle
-│   ├── grbl_interface.py  # Interface GRBL
-│   ├── motor_control.py   # Contrôle des moteurs
-│   └── a4988_config.py    # Configuration A4988
-├── phase3_integration/    # Intégration complète
-│   ├── robot_controller.py # Contrôleur principal
-│   └── gui.py             # Interface graphique
-├── tests/                 # Tests unitaires
+├── phase1_simulation/     # Modeling and simulation
+│   ├── kinematics.py      # Direct and inverse kinematics
+│   ├── simulator.py       # Visual simulator
+│   └── config.py          # Arm configuration
+├── phase2_hardware/       # Hardware control
+│   ├── grbl_interface.py  # GRBL interface
+│   ├── motor_control.py   # Motor control
+│   └── a4988_config.py    # A4988 configuration
+├── phase3_integration/    # Complete integration
+│   ├── robot_controller.py # Main controller
+│   └── gui.py             # Graphical interface
+├── tests/                 # Unit tests
 ├── docs/                  # Documentation
-└── requirements.txt       # Dépendances Python
+└── requirements.txt       # Python dependencies
 ```
 
-## 🚀 Plan d'Action
+## 🚀 Action Plan
 
-### Phase 1: Modélisation et Simulation
-- ✅ Créer la structure du projet
-- ⏳ Implémenter le modèle cinématique (direct et inverse)
-- ⏳ Créer un simulateur visuel du bras 2DDL
-- ⏳ Valider la cinématique inverse avec des tests
+### Phase 1: Modeling and Simulation
+- ✅ Create project structure
+- ⏳ Implement kinematic model (direct and inverse)
+- ⏳ Create visual simulator for 2-DOF arm
+- ⏳ Validate inverse kinematics with tests
 
-### Phase 2: Commande Matérielle
-- ⏳ Créer l'interface de communication avec GRBL
-- ⏳ Implémenter la conversion angles → commandes moteurs
-- ⏳ Tester la communication GRBL
+### Phase 2: Hardware Control
+- ⏳ Create communication interface with GRBL
+- ⏳ Implement angles → motor commands conversion
+- ⏳ Test GRBL communication
 
-### Phase 3: Intégration et Test
-- ⏳ Intégrer cinématique + contrôle GRBL
-- ⏳ Créer une interface de contrôle
-- ⏳ Tester sur le matériel réel
-- ⏳ Documentation finale
+### Phase 3: Integration and Testing
+- ⏳ Integrate kinematics + GRBL control
+- ⏳ Create control interface
+- ⏳ Test on real hardware
+- ⏳ Final documentation
 
-## 🔧 Matériel Requis
+## 🔧 Required Hardware
 
-- Arduino avec GRBL
-- 2x Moteurs pas à pas
-- 2x Drivers A4988
-- Alimentation appropriée
-- Câbles de connexion
+- Arduino with GRBL
+- 2x Stepper motors
+- 2x A4988 drivers
+- Appropriate power supply
+- Connection cables
 
 ## 📦 Installation
 
@@ -59,34 +59,34 @@ SIMULATION/
 pip install -r requirements.txt
 ```
 
-## 🎮 Utilisation
+## 🎮 Usage
 
 ### Simulation (Phase 1)
 ```bash
 python phase1_simulation/simulator.py
 ```
 
-### Contrôle Matériel (Phase 2)
+### Hardware Control (Phase 2)
 ```bash
 python phase2_hardware/grbl_interface.py
 ```
 
-### Système Complet (Phase 3)
+### Complete System (Phase 3)
 ```bash
 python phase3_integration/robot_controller.py
 ```
 
 ## 📚 Documentation
 
-Consultez le dossier `docs/` pour la documentation détaillée :
-- Théorie de la cinématique
-- Configuration GRBL
-- Guide d'utilisation
+Consult the `docs/` folder for detailed documentation:
+- Kinematics theory
+- GRBL configuration
+- User guide
 
 ## 🤝 Contribution
 
-Ce projet est développé dans le cadre d'une thèse.
+This project is developed as part of a thesis.
 
-## 📄 Licence
+## 📄 License
 
-À définir
+To be defined

@@ -1,285 +1,285 @@
-# Guide Pick & Place - Bras Robotique 2DDL
+# Pick & Place Guide - 2-DOF Robotic Arm
 
 ## Introduction
 
-Ce guide explique le système de préhension et de tri d'objets implémenté pour le bras robotique 2DDL. Le système permet au robot de saisir des cubes colorés et de les trier automatiquement dans des zones de dépôt correspondant à leur couleur.
+This guide explains the grasping and object sorting system implemented for the 2-DOF robotic arm. The system allows the robot to grasp colored cubes and automatically sort them into drop zones corresponding to their color.
 
 ---
 
-## 1. Théorie de la Préhension
+## 1. Grasping Theory
 
-### 1.1 Concept de la Pince (Gripper)
+### 1.1 Gripper Concept
 
-La pince est un effecteur terminal attaché à l'extrémité du bras robotique. Elle possède deux mâchoires qui peuvent s'ouvrir et se fermer pour saisir des objets.
+The gripper is an end effector attached to the end of the robotic arm. It has two jaws that can open and close to grasp objects.
 
-**Paramètres de la pince :**
-- **Longueur** : 40 mm depuis l'effecteur final
-- **Largeur ouverte** : 80 mm (permet de saisir des objets jusqu'à 80 mm)
-- **Largeur fermée** : 30 mm (maintien sécurisé des objets)
-- **Vitesse d'animation** : 0.3 secondes pour ouvrir/fermer
+**Gripper parameters:**
+- **Length**: 40 mm from end effector
+- **Open width**: 80 mm (allows grasping objects up to 80 mm)
+- **Closed width**: 30 mm (secure object holding)
+- **Animation speed**: 0.3 seconds to open/close
 
-**États de la pince :**
-- `OPEN` : Pince ouverte, prête à saisir
-- `CLOSED` : Pince fermée, peut tenir un objet
-- `OPENING` : Animation d'ouverture en cours
-- `CLOSING` : Animation de fermeture en cours
+**Gripper states:**
+- `OPEN`: Gripper open, ready to grasp
+- `CLOSED`: Gripper closed, can hold object
+- `OPENING`: Opening animation in progress
+- `CLOSING`: Closing animation in progress
 
-### 1.2 Détection de Saisie
+### 1.2 Grasp Detection
 
-La saisie d'un objet est possible si :
-1. La pince est ouverte
-2. L'objet est à portée (distance ≤ tolérance de saisie)
-3. La pince se ferme ensuite pour maintenir l'objet
+Grasping an object is possible if:
+1. Gripper is open
+2. Object is within reach (distance ≤ grasp tolerance)
+3. Gripper then closes to hold object
 
-**Tolérance de saisie** : 5 mm par défaut
+**Grasp tolerance**: 5 mm by default
 
-### 1.3 Cinématique de la Pince
+### 1.3 Gripper Kinematics
 
-La position de la pince est calculée en prolongeant l'effecteur final :
+Gripper position is calculated by extending the end effector:
 
 ```
-gripper_x = end_effector_x + gripper_length × cos(θ_bras)
-gripper_y = end_effector_y + gripper_length × sin(θ_bras)
+gripper_x = end_effector_x + gripper_length × cos(θ_arm)
+gripper_y = end_effector_y + gripper_length × sin(θ_arm)
 ```
 
-Où `θ_bras` est l'angle du segment L2 par rapport à l'horizontale.
+Where `θ_arm` is the angle of segment L2 relative to horizontal.
 
 ---
 
-## 2. Objets Manipulables
+## 2. Manipulable Objects
 
-### 2.1 Cubes Colorés
+### 2.1 Colored Cubes
 
-Les cubes sont des objets simples avec les propriétés suivantes :
-- **Taille** : 20 mm × 20 mm
-- **Couleurs disponibles** : rouge, bleu, vert, jaune
-- **États** : libre ou saisi
+Cubes are simple objects with the following properties:
+- **Size**: 20 mm × 20 mm
+- **Available colors**: red, blue, green, yellow
+- **States**: free or grasped
 
-**Représentation visuelle :**
-- Carré coloré avec bordure noire
-- Bordure épaisse (3px) si saisi
-- Croix blanche au centre si tenu par la pince
+**Visual representation:**
+- Colored square with black border
+- Thick border (3px) if grasped
+- White cross at center if held by gripper
 
-### 2.2 Zones de Dépôt
+### 2.2 Drop Zones
 
-Chaque couleur possède une zone de dépôt dédiée :
+Each color has a dedicated drop zone:
 
-| Couleur | Position (x, y) | Distance du centre |
-|---------|-----------------|-------------------|
-| Rouge   | (250, 150)      | ~290 mm          |
-| Bleu    | (250, 50)       | ~255 mm          |
-| Vert    | (150, 200)      | ~250 mm          |
-| Jaune   | (150, 50)       | ~158 mm          |
+| Color  | Position (x, y) | Distance from center |
+|--------|-----------------|---------------------|
+| Red    | (250, 150)      | ~290 mm            |
+| Blue   | (250, 50)       | ~255 mm            |
+| Green  | (150, 200)      | ~250 mm            |
+| Yellow | (150, 50)       | ~158 mm            |
 
-**Taille des zones** : 40 mm × 40 mm (2× la taille d'un cube)
+**Zone size**: 40 mm × 40 mm (2× cube size)
 
-### 2.3 Génération Intelligente des Positions
+### 2.3 Intelligent Position Generation
 
-Les cubes sont générés aléatoirement dans l'espace de travail atteignable :
+Cubes are randomly generated in the reachable workspace:
 
-**Algorithme de génération :**
+**Generation algorithm:**
 ```
-Pour chaque cube :
-    1. Générer position en coordonnées polaires
-       - Rayon : 100-280 mm (zone sûre)
-       - Angle : -90° à +90° (devant le robot)
+For each cube:
+    1. Generate position in polar coordinates
+       - Radius: 100-280 mm (safe zone)
+       - Angle: -90° to +90° (in front of robot)
     
-    2. Vérifier atteignabilité
-       - Distance entre r_min+20 et r_max-20
+    2. Check reachability
+       - Distance between r_min+20 and r_max-20
        - r_min = |L1 - L2| = 50 mm
        - r_max = L1 + L2 = 350 mm
     
-    3. Vérifier espacement
-       - Distance minimale entre cubes : 2.5 × taille_cube
+    3. Check spacing
+       - Minimum distance between cubes: 2.5 × cube_size
     
-    4. Éviter les zones de dépôt
-       - Marge de 50 mm autour de chaque zone
+    4. Avoid drop zones
+       - 50 mm margin around each zone
 ```
 
 ---
 
-## 3. Trajectoires Pick & Place
+## 3. Pick & Place Trajectories
 
-### 3.1 Trajectoire de Saisie (Pick)
+### 3.1 Pick Trajectory
 
-Une trajectoire de saisie se compose de 3 phases :
+A pick trajectory consists of 3 phases:
 
-**Phase 1 : Approche verticale**
-- Descendre à une hauteur d'approche (50 mm) au-dessus du cube
-- Pince ouverte
+**Phase 1: Vertical approach**
+- Descend to approach height (50 mm) above cube
+- Gripper open
 
-**Phase 2 : Descente**
-- Descendre jusqu'au niveau du cube
-- Fermer la pince à mi-parcours
+**Phase 2: Descent**
+- Descend to cube level
+- Close gripper at mid-descent
 
-**Phase 3 : Remontée**
-- Remonter à la hauteur d'approche
-- Cube saisi et tenu par la pince
+**Phase 3: Ascent**
+- Rise to approach height
+- Cube grasped and held by gripper
 
-**Nombre de points** : ~30 points par phase
+**Number of points**: ~30 points per phase
 
-### 3.2 Trajectoire de Dépôt (Place)
+### 3.2 Place Trajectory
 
-Une trajectoire de dépôt se compose de 3 phases :
+A place trajectory consists of 3 phases:
 
-**Phase 1 : Approche**
-- Se déplacer au-dessus de la zone de dépôt
-- Hauteur d'approche : 50 mm
-- Pince fermée, cube tenu
+**Phase 1: Approach**
+- Move above drop zone
+- Approach height: 50 mm
+- Gripper closed, cube held
 
-**Phase 2 : Descente**
-- Descendre jusqu'au niveau de dépôt
-- Ouvrir la pince à 75% de la descente
+**Phase 2: Descent**
+- Descend to drop level
+- Open gripper at 75% of descent
 
-**Phase 3 : Remontée**
-- Remonter à la hauteur d'approche
-- Cube déposé, pince ouverte
+**Phase 3: Ascent**
+- Rise to approach height
+- Cube deposited, gripper open
 
-### 3.3 Trajectoire Complète Pick & Place
+### 3.3 Complete Pick & Place Trajectory
 
-La méthode `compute_pick_and_place_trajectory()` combine les deux trajectoires :
+The `compute_pick_and_place_trajectory()` method combines both trajectories:
 
 ```
-Trajectoire complète = [
-    Points de descente pick (approche → cube),
-    Points de remontée pick (cube → hauteur),
-    Points de transfert (position pick → position place),
-    Points de descente place (hauteur → zone),
-    Points de remontée place (zone → hauteur)
+Complete trajectory = [
+    Pick descent points (approach → cube),
+    Pick ascent points (cube → height),
+    Transfer points (pick position → place position),
+    Place descent points (height → zone),
+    Place ascent points (zone → height)
 ]
 ```
 
-**Optimisation** : Les points dupliqués entre phases sont éliminés.
+**Optimization**: Duplicate points between phases are eliminated.
 
-**Format des points** : `[x, y, θ1, θ2]`
-- `x, y` : Position cartésienne (mm)
-- `θ1, θ2` : Angles articulaires (radians)
-
----
-
-## 4. Algorithme de Tri
-
-### 4.1 Stratégie de Tri
-
-Le scénario `ColorSortingScenario` implémente une stratégie de tri simple mais efficace :
-
-**Algorithme du plus proche :**
-```
-Tant qu'il reste des cubes non triés :
-    1. Trouver le cube non trié le plus proche
-    2. Planifier trajectoire pick & place vers sa zone
-    3. Exécuter la trajectoire
-    4. Mettre à jour le score
-```
-
-**Critère de tri :**
-- Un cube est considéré "trié" s'il est dans la zone de sa couleur
-- Distance minimale pour validation : centre du cube dans la zone
-
-### 4.2 États du Scénario
-
-Le scénario peut être dans l'un des états suivants :
-
-| État | Description |
-|------|-------------|
-| `IDLE` | En attente, prêt à démarrer |
-| `INITIALIZING` | Création des objets en cours |
-| `RUNNING` | Tri en cours d'exécution |
-| `PAUSED` | Tri mis en pause |
-| `COMPLETED` | Tous les cubes triés avec succès |
-| `FAILED` | Échec (position inaccessible) |
-
-### 4.3 Synchronisation Pince-Trajectoire
-
-L'exécution de la trajectoire est synchronisée avec les actions de la pince :
-
-**Ratios de progression :**
-- **25-35%** : Fermeture de la pince (descente vers le cube)
-- **35-45%** : Saisie du cube (après fermeture)
-- **70-80%** : Ouverture de la pince (au-dessus de la zone)
-
-**Mise à jour continue :**
-- La position du cube tenu est mise à jour à chaque frame
-- Synchronisation avec la position de la pince en temps réel
+**Point format**: `[x, y, θ1, θ2]`
+- `x, y`: Cartesian position (mm)
+- `θ1, θ2`: Joint angles (radians)
 
 ---
 
-## 5. Métriques et Suivi
+## 4. Sorting Algorithm
 
-### 5.1 Statistiques de Performance
+### 4.1 Sorting Strategy
 
-Le système suit les métriques suivantes :
+The `ColorSortingScenario` implements a simple but effective sorting strategy:
 
-- **Nombre total de cubes** : Cubes à trier
-- **Cubes triés** : Cubes correctement placés
-- **Nombre de mouvements** : Trajectoires exécutées
-- **Placements réussis** : Cubes dans la bonne zone
-- **Tentatives échouées** : Trajectoires impossibles
-- **Temps écoulé** : Durée totale du tri
+**Nearest-first algorithm:**
+```
+While unsorted cubes remain:
+    1. Find nearest unsorted cube
+    2. Plan pick & place trajectory to its zone
+    3. Execute trajectory
+    4. Update score
+```
 
-### 5.2 Calcul du Score
+**Sorting criterion:**
+- A cube is considered "sorted" if it's in its color zone
+- Minimum distance for validation: cube center in zone
+
+### 4.2 Scenario States
+
+The scenario can be in one of the following states:
+
+| State | Description |
+|-------|-------------|
+| `IDLE` | Waiting, ready to start |
+| `INITIALIZING` | Object creation in progress |
+| `RUNNING` | Sorting in execution |
+| `PAUSED` | Sorting paused |
+| `COMPLETED` | All cubes sorted successfully |
+| `FAILED` | Failure (unreachable position) |
+
+### 4.3 Gripper-Trajectory Synchronization
+
+Trajectory execution is synchronized with gripper actions:
+
+**Progress ratios:**
+- **25-35%**: Gripper closing (descent toward cube)
+- **35-45%**: Cube grasping (after closing)
+- **70-80%**: Gripper opening (above zone)
+
+**Continuous update:**
+- Held cube position updated each frame
+- Real-time synchronization with gripper position
+
+---
+
+## 5. Metrics and Tracking
+
+### 5.1 Performance Statistics
+
+The system tracks the following metrics:
+
+- **Total cubes**: Cubes to sort
+- **Sorted cubes**: Correctly placed cubes
+- **Number of movements**: Executed trajectories
+- **Successful placements**: Cubes in correct zone
+- **Failed attempts**: Impossible trajectories
+- **Elapsed time**: Total sorting duration
+
+### 5.2 Score Calculation
 
 ```python
-score = nombre_de_cubes_correctement_placés
-progression = (score / total_cubes) × 100%
+score = number_of_correctly_placed_cubes
+progress = (score / total_cubes) × 100%
 ```
 
-Un cube est correctement placé si :
-1. Il est dans une zone de dépôt
-2. La couleur du cube correspond à la couleur de la zone
+A cube is correctly placed if:
+1. It's in a drop zone
+2. Cube color matches zone color
 
 ---
 
-## 6. Gestion des Erreurs
+## 6. Error Handling
 
-### 6.1 Positions Inaccessibles
+### 6.1 Unreachable Positions
 
-Si un cube ou une zone est inaccessible :
-- La cinématique inverse retourne `None`
-- Le scénario enregistre un échec
-- Le tri continue avec le cube suivant
+If a cube or zone is unreachable:
+- Inverse kinematics returns `None`
+- Scenario records failure
+- Sorting continues with next cube
 
-### 6.2 Collisions (Non implémenté)
+### 6.2 Collisions (Not implemented)
 
-**Note** : La détection de collision entre cubes n'est pas implémentée dans cette version. Les cubes peuvent se chevaucher visuellement mais cela n'affecte pas la logique de tri.
+**Note**: Collision detection between cubes is not implemented in this version. Cubes can visually overlap but this doesn't affect sorting logic.
 
-### 6.3 Limites Articulaires
+### 6.3 Joint Limits
 
-Toutes les trajectoires respectent les limites articulaires :
-- θ1 : -180° à +180°
-- θ2 : -150° à +150°
+All trajectories respect joint limits:
+- θ1: -180° to +180°
+- θ2: -150° to +150°
 
 ---
 
-## 7. Utilisation Pratique
+## 7. Practical Usage
 
-### 7.1 Contrôles du Simulateur
+### 7.1 Simulator Controls
 
-| Touche | Action |
-|--------|--------|
-| **P** | Démarrer/arrêter le tri automatique |
-| **O** | Ouvrir/fermer la pince manuellement |
-| **C** | Créer de nouveaux cubes aléatoires |
-| **S** | Pause/reprendre le scénario |
-| **R** | Réinitialiser le robot |
+| Key | Action |
+|-----|--------|
+| **P** | Start/stop automatic sorting |
+| **O** | Open/close gripper manually |
+| **C** | Create new random cubes |
+| **S** | Pause/resume scenario |
+| **R** | Reset robot |
 
-### 7.2 Exemple de Session
+### 7.2 Example Session
 
 ```python
-# Initialiser le scénario avec 4 cubes
+# Initialize scenario with 4 cubes
 scenario.initialize(num_cubes=4)
 
-# Démarrer le tri automatique
+# Start automatic sorting
 scenario.start()
 
-# Le système exécute automatiquement :
-# 1. Trouve le cube le plus proche
-# 2. Planifie la trajectoire pick & place
-# 3. Exécute le mouvement
-# 4. Répète jusqu'à ce que tous les cubes soient triés
+# System automatically executes:
+# 1. Finds nearest cube
+# 2. Plans pick & place trajectory
+# 3. Executes movement
+# 4. Repeats until all cubes are sorted
 ```
 
-### 7.3 Intégration dans un Projet
+### 7.3 Integration in a Project
 
 ```python
 from phase1_simulation.config import RobotConfig
@@ -294,53 +294,53 @@ kinematics = Kinematics(config)
 gripper = Gripper(config)
 object_manager = ObjectManager(config)
 
-# Créer le scénario
+# Create scenario
 scenario = ColorSortingScenario(config, kinematics, gripper, object_manager)
 
-# Initialiser et démarrer
+# Initialize and start
 scenario.initialize(num_cubes=4, colors=['red', 'blue', 'green', 'yellow'])
 scenario.start()
 
-# Exécuter une étape
+# Execute step
 current_pos = kinematics.forward_kinematics(theta1, theta2)
 result = scenario.execute_sort_step(current_pos)
 
 if result:
     trajectory, description = result
-    # Exécuter la trajectoire...
+    # Execute trajectory...
 ```
 
 ---
 
-## 8. Améliorations Futures
+## 8. Future Improvements
 
-### 8.1 Optimisations Possibles
+### 8.1 Possible Optimizations
 
-- **Algorithme TSP** : Optimiser l'ordre de tri pour minimiser la distance totale
-- **Interpolation spline** : Trajectoires plus fluides
-- **Détection de collision** : Éviter les chevauchements entre cubes
-- **Physique réaliste** : Gravité, friction, rebonds
+- **TSP algorithm**: Optimize sorting order to minimize total distance
+- **Spline interpolation**: Smoother trajectories
+- **Collision detection**: Avoid overlaps between cubes
+- **Realistic physics**: Gravity, friction, bounces
 
 ### 8.2 Extensions
 
-- **Objets de formes variées** : Cylindres, sphères
-- **Tri multi-critères** : Couleur + taille + forme
-- **Zones de dépôt dynamiques** : Positions changeantes
-- **Mode collaboratif** : Plusieurs bras robotiques
+- **Varied object shapes**: Cylinders, spheres
+- **Multi-criteria sorting**: Color + size + shape
+- **Dynamic drop zones**: Changing positions
+- **Collaborative mode**: Multiple robotic arms
 
 ---
 
 ## Conclusion
 
-Le système pick & place implémenté démontre les capacités d'un bras robotique 2DDL pour des tâches de manipulation d'objets. L'architecture modulaire permet une extension facile et une intégration dans des projets plus complexes.
+The implemented pick & place system demonstrates the capabilities of a 2-DOF robotic arm for object manipulation tasks. The modular architecture allows easy extension and integration into more complex projects.
 
-**Points forts :**
-- ✅ Trajectoires validées par cinématique inverse
-- ✅ Synchronisation précise pince-mouvement
-- ✅ Génération intelligente de positions atteignables
-- ✅ Gestion robuste des erreurs
-- ✅ Métriques de performance complètes
+**Strengths:**
+- ✅ Trajectories validated by inverse kinematics
+- ✅ Precise gripper-movement synchronization
+- ✅ Intelligent generation of reachable positions
+- ✅ Robust error handling
+- ✅ Complete performance metrics
 
 ---
 
-*Document généré par IBM Bob - 2 mai 2026*
+*Document generated by IBM Bob - May 2, 2026*

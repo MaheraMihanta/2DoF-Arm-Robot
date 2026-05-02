@@ -1,131 +1,131 @@
-# 🚀 Démarrage Rapide - Bras Robotique 2DDL
+# 🚀 Quick Start - 2-DOF Robotic Arm
 
-## Installation Express (5 minutes)
+## Express Installation (5 minutes)
 
 ```bash
-# 1. Installer les dépendances
+# 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Tester la configuration
+# 2. Test configuration
 python phase1_simulation/config.py
 
-# 3. Lancer le simulateur
+# 3. Launch simulator
 python phase1_simulation/simulator.py
 ```
 
-## 🎮 Premiers Pas avec le Simulateur
+## 🎮 First Steps with the Simulator
 
-### Commandes Essentielles
+### Essential Commands
 
-| Touche | Action |
+| Key | Action |
 |--------|--------|
-| **←→** | Contrôler θ1 (articulation 1) |
-| **↑↓** | Contrôler θ2 (articulation 2) |
-| **Clic gauche** | Définir une position cible |
-| **M** | Changer de mode (angles/position) |
-| **R** | Réinitialiser |
-| **ESC** | Quitter |
+| **←→** | Control θ1 (joint 1) |
+| **↑↓** | Control θ2 (joint 2) |
+| **Left click** | Set target position |
+| **M** | Change mode (angles/position) |
+| **R** | Reset |
+| **ESC** | Quit |
 
-### Exercice 1: Contrôle Manuel
+### Exercise 1: Manual Control
 
-1. Lancez le simulateur
-2. Utilisez les flèches pour déplacer le bras
-3. Observez les angles et la position dans le panneau d'info
+1. Launch the simulator
+2. Use arrow keys to move the arm
+3. Observe angles and position in the info panel
 
-### Exercice 2: Contrôle par Position
+### Exercise 2: Position Control
 
-1. Appuyez sur **M** pour passer en mode position
-2. Cliquez sur un point dans l'espace de travail (zone bleue)
-3. Le bras se déplace automatiquement vers ce point
+1. Press **M** to switch to position mode
+2. Click on a point in the workspace (blue area)
+3. The arm automatically moves to that point
 
-## 🔧 Test avec Matériel (10 minutes)
+## 🔧 Hardware Testing (10 minutes)
 
-### Prérequis
-- Arduino avec GRBL flashé
-- 2× Moteurs pas à pas
-- 2× Drivers A4988
-- Alimentation 12-24V
+### Prerequisites
+- Arduino with GRBL flashed
+- 2× Stepper motors
+- 2× A4988 drivers
+- 12-24V power supply
 
-### Étapes Rapides
+### Quick Steps
 
 ```bash
-# 1. Vérifier la connexion
+# 1. Check connection
 python phase2_hardware/grbl_interface.py
-# Entrer votre port série (ex: COM3)
+# Enter your serial port (e.g., COM3)
 
-# 2. Tester les moteurs
+# 2. Test motors
 python phase2_hardware/motor_control.py
-# Menu: 1 (Homing) puis 3 (Déplacer vers angles)
+# Menu: 1 (Homing) then 3 (Move to angles)
 
-# 3. Lancer l'interface complète
+# 3. Launch complete interface
 python phase3_integration/gui.py
 ```
 
-## 📊 Interface Graphique
+## 📊 Graphical Interface
 
-### Onglet Contrôle
+### Control Tab
 
-1. **Connexion**
-   - Mode: Choisir "simulation" ou "hardware"
-   - Port: Entrer le port série (ex: COM3)
-   - Cliquer "Connecter"
+1. **Connection**
+   - Mode: Choose "simulation" or "hardware"
+   - Port: Enter serial port (e.g., COM3)
+   - Click "Connect"
 
-2. **Contrôle par Angles**
-   - Ajuster θ1 et θ2 avec les curseurs
-   - Cliquer "Déplacer"
+2. **Angle Control**
+   - Adjust θ1 and θ2 with sliders
+   - Click "Move"
 
-3. **Contrôle par Position**
-   - Entrer X et Y en mm
-   - Cocher "Coude vers le haut" si désiré
-   - Cliquer "Déplacer"
+3. **Position Control**
+   - Enter X and Y in mm
+   - Check "Elbow up" if desired
+   - Click "Move"
 
-### Onglet Trajectoires
+### Trajectories Tab
 
-1. **Trajectoire Linéaire**
-   - Entrer position cible (X, Y)
-   - Nombre de points: 50 (par défaut)
-   - Cliquer "Planifier" puis "Exécuter"
+1. **Linear Trajectory**
+   - Enter target position (X, Y)
+   - Number of points: 50 (default)
+   - Click "Plan" then "Execute"
 
-2. **Trajectoires Prédéfinies**
-   - Carré, Cercle, ou Zigzag
-   - Cliquer sur le bouton correspondant
+2. **Predefined Trajectories**
+   - Square, Circle, or Zigzag
+   - Click corresponding button
 
-## 🧪 Tests Unitaires
+## 🧪 Unit Tests
 
 ```bash
-# Exécuter tous les tests
+# Run all tests
 cd tests
 pytest test_kinematics.py -v
 
-# Test spécifique
+# Specific test
 pytest test_kinematics.py::TestKinematics::test_forward_kinematics_zero_angles -v
 ```
 
-## 📝 Exemples de Code
+## 📝 Code Examples
 
-### Exemple 1: Simulation Simple
+### Example 1: Simple Simulation
 
 ```python
 from phase1_simulation.config import config
 from phase1_simulation.kinematics import Kinematics
 import numpy as np
 
-# Créer l'objet cinématique
+# Create kinematic object
 kin = Kinematics(config)
 
-# Cinématique directe
+# Forward kinematics
 theta1, theta2 = np.radians(45), np.radians(30)
 x, y = kin.forward_kinematics(theta1, theta2)
 print(f"Position: ({x:.1f}, {y:.1f}) mm")
 
-# Cinématique inverse
+# Inverse kinematics
 result = kin.inverse_kinematics(250, 150)
 if result:
     theta1, theta2 = result
     print(f"Angles: θ1={np.degrees(theta1):.1f}°, θ2={np.degrees(theta2):.1f}°")
 ```
 
-### Exemple 2: Contrôle Matériel
+### Example 2: Hardware Control
 
 ```python
 import sys
@@ -137,19 +137,19 @@ from grbl_interface import GRBLInterface
 from motor_control import MotorController
 import numpy as np
 
-# Connexion GRBL
+# GRBL connection
 with GRBLInterface(port='COM3') as grbl:
-    # Créer le contrôleur
+    # Create controller
     controller = MotorController(config, grbl)
     
     # Homing
     controller.home_motors()
     
-    # Déplacer vers des angles
+    # Move to angles
     controller.move_to_angles(np.radians(30), np.radians(20))
 ```
 
-### Exemple 3: Système Complet
+### Example 3: Complete System
 
 ```python
 import sys
@@ -160,53 +160,53 @@ sys.path.insert(0, 'phase3_integration')
 from config import config
 from robot_controller import RobotController, ControlMode
 
-# Mode simulation
+# Simulation mode
 with RobotController(config, ControlMode.SIMULATION) as robot:
-    # Déplacer vers une position
+    # Move to position
     robot.move_to_position(250, 150)
     
-    # Planifier une trajectoire
+    # Plan trajectory
     trajectory = robot.plan_linear_trajectory(300, 200, num_points=50)
     
-    # Exécuter la trajectoire
+    # Execute trajectory
     if trajectory is not None:
         robot.execute_trajectory(trajectory)
 ```
 
-## 🎯 Cas d'Usage Typiques
+## 🎯 Typical Use Cases
 
-### 1. Validation de la Cinématique
+### 1. Kinematics Validation
 
 ```bash
-# Tester la cinématique
+# Test kinematics
 python phase1_simulation/kinematics.py
 
-# Lancer les tests
+# Run tests
 pytest tests/test_kinematics.py -v
 ```
 
-### 2. Calibration du Matériel
+### 2. Hardware Calibration
 
 ```bash
-# Afficher la configuration A4988
+# Display A4988 configuration
 python phase2_hardware/a4988_config.py
 
-# Configurer GRBL
+# Configure GRBL
 python phase2_hardware/motor_control.py
-# Menu: 6 (Configurer GRBL)
+# Menu: 6 (Configure GRBL)
 ```
 
-### 3. Démonstration Interactive
+### 3. Interactive Demonstration
 
 ```bash
-# Interface complète
+# Complete interface
 python phase3_integration/robot_controller.py
 
-# Ou interface graphique
+# Or graphical interface
 python phase3_integration/gui.py
 ```
 
-## ⚠️ Problèmes Courants
+## ⚠️ Common Issues
 
 ### "Import numpy could not be resolved"
 
@@ -214,7 +214,7 @@ python phase3_integration/gui.py
 pip install numpy matplotlib pygame pyserial pytest
 ```
 
-### "Port série introuvable"
+### "Serial port not found"
 
 **Windows:**
 ```python
@@ -227,42 +227,42 @@ for port in ports:
 **Linux/Mac:**
 ```bash
 ls /dev/tty*
-# Chercher /dev/ttyUSB0 ou /dev/ttyACM0
+# Look for /dev/ttyUSB0 or /dev/ttyACM0
 ```
 
-### "Position non atteignable"
+### "Position unreachable"
 
-Vérifier que la position est dans l'espace de travail:
-- Rayon max: L1 + L2 = 350 mm
-- Rayon min: |L1 - L2| = 50 mm
+Verify that the position is within the workspace:
+- Max radius: L1 + L2 = 350 mm
+- Min radius: |L1 - L2| = 50 mm
 
-### "Moteurs ne bougent pas"
+### "Motors not moving"
 
-1. Vérifier Vref sur les A4988
-2. Vérifier l'alimentation moteurs
-3. Vérifier les paramètres GRBL ($100, $101)
+1. Check Vref on A4988 drivers
+2. Check motor power supply
+3. Check GRBL parameters ($100, $101)
 
-## 📚 Documentation Complète
+## 📚 Complete Documentation
 
-- **Guide d'utilisation**: `docs/guide_utilisation.md`
-- **Théorie cinématique**: `docs/theorie_cinematique.md`
-- **README principal**: `README.md`
+- **User guide**: `docs/guide_utilisation.md`
+- **Kinematics theory**: `docs/theorie_cinematique.md`
+- **Main README**: `README.md`
 
 ## 🆘 Support
 
-1. Consulter la documentation dans `docs/`
-2. Vérifier les exemples dans chaque module
-3. Tester en mode simulation d'abord
-4. Vérifier le câblage matériel
+1. Consult documentation in `docs/`
+2. Check examples in each module
+3. Test in simulation mode first
+4. Verify hardware wiring
 
-## 🎓 Prochaines Étapes
+## 🎓 Next Steps
 
-1. ✅ Maîtriser le simulateur
-2. ✅ Comprendre la cinématique inverse
-3. ✅ Tester avec le matériel
-4. ✅ Créer vos propres trajectoires
-5. ✅ Optimiser les paramètres
+1. ✅ Master the simulator
+2. ✅ Understand inverse kinematics
+3. ✅ Test with hardware
+4. ✅ Create your own trajectories
+5. ✅ Optimize parameters
 
 ---
 
-**Bon développement ! 🤖**
+**Happy developing! 🤖**
