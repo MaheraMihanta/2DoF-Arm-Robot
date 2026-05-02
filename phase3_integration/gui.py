@@ -799,11 +799,13 @@ class RobotGUI:
         self.canvas.create_line(0, center_y, self.canvas_width, center_y, fill="#c2c7d0", width=1)
         self.canvas.create_line(center_x, 0, center_x, self.canvas_height, fill="#c2c7d0", width=1)
 
-        # Dessiner les zones de dépôt et cubes si le scénario Pick & Place est actif
+        # Ordre de dessin : arrière-plan vers premier plan
+        # 1. Zones de dépôt et cubes (arrière-plan)
         if self.pp_object_manager:
             self.draw_drop_zones()
             self.draw_cubes()
 
+        # 2. Trajectoires
         if self.planned_trajectory is not None:
             self.draw_polyline(self.planned_trajectory[:, :2], color="#c792ea", width=2, dash=(4, 3))
 
@@ -811,13 +813,16 @@ class RobotGUI:
             history = np.array(self.live_snapshot["history"])
             self.draw_polyline(history, color="#5d89ff", width=2)
 
+        # 3. Cible
         if self.live_snapshot:
             target = (self.live_snapshot["target_x"], self.live_snapshot["target_y"])
             self.draw_target(target, color="#15a34a")
+
+        # 4. Bras robotique et pince (premier plan)
+        if self.live_snapshot:
             theta1 = self.live_snapshot["theta1"]
             theta2 = self.live_snapshot["theta2"]
             self.draw_robot(theta1, theta2)
-            # Dessiner la pince après le robot
             if self.pp_gripper:
                 self.draw_gripper(theta1, theta2)
         else:
@@ -872,6 +877,22 @@ class RobotGUI:
         base = self.world_to_canvas(*positions["base"])
         joint1 = self.world_to_canvas(*positions["joint1"])
         end_effector = self.world_to_canvas(*positions["end_effector"])
+
+        # Dessiner les segments du bras
+        self.canvas.create_line(*base, *joint1, fill="#0a6fff", width=8, capstyle=tk.ROUND)
+        self.canvas.create_line(*joint1, *end_effector, fill="#ff8c2b", width=8, capstyle=tk.ROUND)
+
+        # Dessiner les articulations
+        self.canvas.create_oval(base[0] - 12, base[1] - 12, base[0] + 12, base[1] + 12, fill="#737373", outline="#2b2b2b")
+        self.canvas.create_oval(joint1[0] - 10, joint1[1] - 10, joint1[0] + 10, joint1[1] + 10, fill="#ce2d2d", outline="#5f1111")
+        self.canvas.create_oval(
+            end_effector[0] - 11,
+            end_effector[1] - 11,
+            end_effector[0] + 11,
+            end_effector[1] + 11,
+            fill="#16a34a",
+            outline="#0f5e2d",
+        )
 
     
     def draw_drop_zones(self):
